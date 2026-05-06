@@ -1,0 +1,32 @@
+* text=auto
+
+# Unity text assets
+*.cs text diff=csharp
+*.shader text
+*.cginc text
+*.mat text
+*.meta text
+*.prefab text
+*.unity text
+*.asset text
+*.controller text
+*.anim text
+*.asmdef text
+*.json text
+*.md text
+*.sh text eol=lf
+
+# Binary assets
+*.fbx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.tga binary
+*.psd binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.mp4 binary
+*.mov binary
+*.zip binary

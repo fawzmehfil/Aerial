@@ -1,0 +1,46 @@
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Unity generated files
+*.csproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pid
+sysinfo.txt
+
+# Unity crash reports
+*.stackdump
+
+# Builds and exports
+[Bb]uild/
+[Bb]uilds/
+[Ee]xports/
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# OS/editor noise
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
