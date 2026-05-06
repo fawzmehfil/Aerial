@@ -70,6 +70,28 @@ public sealed class DriftContractTests
     }
 
     [Test]
+    public void InvertedGravityModeIsNotAvailableOrAuthored()
+    {
+        Type portalKindType = RequireType("Drift.PortalKind");
+        string[] portalKinds = Enum.GetNames(portalKindType);
+        Assert.That(portalKinds, Does.Not.Contain("GravityInverted"));
+
+        Type catalogType = RequireType("Drift.LevelCatalog");
+        MethodInfo getLevels = catalogType.GetMethod("GetLevels", BindingFlags.Public | BindingFlags.Static);
+        IEnumerable levelEnumerable = (IEnumerable)getLevels.Invoke(null, null);
+
+        foreach (object level in levelEnumerable)
+        {
+            IList portals = (IList)GetField(level, "Portals");
+            foreach (object portal in portals)
+            {
+                object kind = GetField(portal, "Kind");
+                Assert.That(kind.ToString(), Does.Not.Contain("Inverted"));
+            }
+        }
+    }
+
+    [Test]
     public void ProgressionServiceUnlocksAndPersistsLevels()
     {
         PlayerPrefs.DeleteKey("Drift.HighestUnlockedLevel");

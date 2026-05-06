@@ -249,7 +249,7 @@ namespace Drift
             {
                 portal = root.AddComponent<SpeedPortal>();
             }
-            else if (spec.Kind == PortalKind.GravityInverted || spec.Kind == PortalKind.GravityNormal || spec.Kind == PortalKind.GravitySideways)
+            else if (spec.Kind == PortalKind.GravityNormal || spec.Kind == PortalKind.GravitySideways)
             {
                 portal = root.AddComponent<GravityPortal>();
             }
@@ -444,7 +444,6 @@ namespace Drift
                     return new Color(1f, 0.32f, 0.08f);
                 case PortalKind.SpeedSlow:
                     return new Color(0.08f, 0.72f, 1f);
-                case PortalKind.GravityInverted:
                 case PortalKind.GravitySideways:
                     return new Color(0.95f, 0.95f, 1f);
                 case PortalKind.SizeSmall:

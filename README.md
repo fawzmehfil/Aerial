@@ -82,7 +82,7 @@ The project includes an expanded accessible level set:
 4. Red Gate Foundry: industrial red rectangular gate course with wall and pillar hazards.
 5. Cosmic Ring Void: open starfield ring tunnel with alien silhouettes and debris.
 6. Sideways Spiral: sparse orientation portal set piece.
-7. Aerial Expedition: longer mixed adventure course with corridor, void, portal chain, gravity flip, and final challenge.
+7. Aerial Expedition: longer mixed adventure course with corridor, void, portal chain, speed/size shifts, and final challenge.
 
 ## Adding Levels
 

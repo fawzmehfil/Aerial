@@ -17,7 +17,6 @@ namespace Drift
         SpeedFast,
         SpeedSlow,
         SpeedNormal,
-        GravityInverted,
         GravityNormal,
         GravitySideways,
         SizeSmall,

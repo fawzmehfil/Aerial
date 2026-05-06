@@ -29,6 +29,7 @@ namespace DriftEditor
 
             CheckRequiredTypes(failures);
             CheckLevelCatalog(failures);
+            CheckNoInvertedMode(failures);
             CheckProgression(failures);
             CheckProjectAssets(failures);
             CheckRuntimeBootstrap(failures);
@@ -166,6 +167,25 @@ namespace DriftEditor
             if (!progression.IsLevelCompleted(1) || !progression.IsLevelUnlocked(LevelCatalog.GetLevels().Count))
             {
                 failures.Add("Completing level 1 should mark it complete without locking later levels.");
+            }
+        }
+
+        private static void CheckNoInvertedMode(List<string> failures)
+        {
+            if (Enum.GetNames(typeof(PortalKind)).Any(name => name.Contains("Inverted")))
+            {
+                failures.Add("Inverted gravity mode should not exist in PortalKind.");
+            }
+
+            foreach (LevelDefinition level in LevelCatalog.GetLevels())
+            {
+                foreach (PortalSpec portal in level.Portals)
+                {
+                    if (portal.Kind.ToString().Contains("Inverted"))
+                    {
+                        failures.Add($"{level.DisplayName} still authors an inverted gravity portal.");
+                    }
+                }
             }
         }
 

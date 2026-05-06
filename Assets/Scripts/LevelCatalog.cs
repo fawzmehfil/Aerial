@@ -42,8 +42,6 @@ namespace Drift
                 {
                     new PortalSpec(0f, 0f, 132f, PortalKind.SpeedSlow, 2.5f, 3f),
                     new PortalSpec(0f, 0f, 156f, PortalKind.SizeSmall, 2.3f, 5f),
-                    new PortalSpec(0f, 0f, 182f, PortalKind.GravityInverted, 2.35f, 0f),
-                    new PortalSpec(0f, 0f, 204f, PortalKind.GravityNormal, 2.35f, 0f),
                     new PortalSpec(0f, 0f, 210f, PortalKind.SpeedNormal, 2.35f, 0f),
                     new PortalSpec(0f, 0f, 214f, PortalKind.SizeNormal, 2.35f, 0f)
                 },
@@ -173,8 +171,8 @@ namespace Drift
                 },
                 new[]
                 {
-                    new PortalSpec(0f, 0f, 98f, PortalKind.GravityInverted, 2.35f, 0f),
-                    new PortalSpec(0f, 0f, 186f, PortalKind.GravityNormal, 2.35f, 0f)
+                    new PortalSpec(0f, 0f, 98f, PortalKind.SpeedSlow, 2.35f, 4f),
+                    new PortalSpec(0f, 0f, 186f, PortalKind.SpeedNormal, 2.35f, 0f)
                 }),
 
             new LevelDefinition(
@@ -214,7 +212,7 @@ namespace Drift
             new LevelDefinition(
                 7,
                 "Aerial Expedition",
-                "Long mixed adventure course: corridor, void, portal chain, gravity flip, and final red tunnel.",
+                "Long mixed adventure course: corridor, void, portal chain, speed shifts, size changes, and final red tunnel.",
                 25f,
                 new Vector2(9f, 6f),
                 EnvironmentTheme.MixedAdventure,
@@ -249,9 +247,9 @@ namespace Drift
                 {
                     new PortalSpec(0f, 0f, 44f, PortalKind.SpeedFast, 2.2f, 5f),
                     new PortalSpec(0f, 0f, 132f, PortalKind.SizeSmall, 2.2f, 7f),
-                    new PortalSpec(0f, 0f, 188f, PortalKind.GravityInverted, 2.35f, 0f),
+                    new PortalSpec(0f, 0f, 188f, PortalKind.SpeedSlow, 2.35f, 4f),
                     new PortalSpec(0f, 0f, 250f, PortalKind.SpeedSlow, 2.2f, 4f),
-                    new PortalSpec(0f, 0f, 280f, PortalKind.GravityNormal, 2.35f, 0f),
+                    new PortalSpec(0f, 0f, 280f, PortalKind.SpeedNormal, 2.35f, 0f),
                     new PortalSpec(0f, 0f, 306f, PortalKind.SizeNormal, 2.2f, 0f),
                     new PortalSpec(0f, 0f, 316f, PortalKind.SpeedNormal, 2.2f, 0f)
                 })

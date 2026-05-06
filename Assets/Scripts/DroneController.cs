@@ -98,7 +98,8 @@ namespace Drift
 
         public void ApplyOrientation(float rollDegrees, float duration, string hudLabel)
         {
-            targetOrientationRoll = rollDegrees;
+            float sanitizedRoll = Mathf.Abs(Mathf.DeltaAngle(0f, rollDegrees)) > 135f ? 0f : rollDegrees;
+            targetOrientationRoll = sanitizedRoll;
             if (orientationRoutine != null)
             {
                 StopCoroutine(orientationRoutine);

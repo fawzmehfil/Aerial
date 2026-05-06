@@ -6,9 +6,6 @@ namespace Drift
         {
             switch (Kind)
             {
-                case PortalKind.GravityInverted:
-                    drone.ApplyOrientation(180f, 0f, "GRAVITY FLIP");
-                    break;
                 case PortalKind.GravitySideways:
                     drone.ApplyOrientation(90f, 0f, "SIDEWAYS GRAVITY");
                     break;
