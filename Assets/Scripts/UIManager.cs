@@ -31,9 +31,11 @@ namespace Drift
         private float effectsVolume = 1f;
         private float cameraSmoothing = 0.18f;
         private int graphicsQuality = 1;
+        private float viewTransitionStart;
         private LevelSelectManager levelSelectManager;
         private GUIStyle titleStyle;
         private GUIStyle subtitleStyle;
+        private GUIStyle eyebrowStyle;
         private GUIStyle hudStyle;
         private GUIStyle panelStyle;
         private GUIStyle buttonStyle;
@@ -43,7 +45,7 @@ namespace Drift
 
         public void ShowMainMenu()
         {
-            currentView = View.MainMenu;
+            SetView(View.MainMenu);
         }
 
         public void ShowLevelSelect(IReadOnlyList<LevelDefinition> levels, ProgressionService progression)
@@ -51,13 +53,13 @@ namespace Drift
             levelSelectLevels = levels;
             levelSelectProgression = progression;
             EnsureLevelSelectManager();
-            currentView = View.LevelSelect;
+            SetView(View.LevelSelect);
         }
 
         public void ShowHud(LevelDefinition level)
         {
             hudLevel = level;
-            currentView = View.Hud;
+            SetView(View.Hud);
         }
 
         public void UpdateHudProgress(int currentRing, int totalRings)
@@ -68,25 +70,25 @@ namespace Drift
 
         public void ShowPauseMenu()
         {
-            currentView = View.Pause;
+            SetView(View.Pause);
         }
 
         public void ShowLevelComplete(int levelNumber, bool hasNextLevel)
         {
             completeLevelNumber = levelNumber;
             completeHasNextLevel = hasNextLevel;
-            currentView = View.Complete;
+            SetView(View.Complete);
         }
 
         public void ShowFailure(string reason)
         {
             failureReason = string.IsNullOrWhiteSpace(reason) ? "Missed Ring" : reason;
-            currentView = View.Failure;
+            SetView(View.Failure);
         }
 
         public void ShowSettings()
         {
-            currentView = View.Settings;
+            SetView(View.Settings);
         }
 
         public void ShowPortalEffect(string label, float duration)
@@ -123,17 +125,24 @@ namespace Drift
                     DrawSettings();
                     break;
             }
+
+            DrawTransitionOverlay();
         }
 
         private void DrawMainMenu()
         {
             DrawMenuBackdrop();
-            Rect panel = CenteredPanel(500f, 520f);
-            DrawPanel(panel, new Color(0.006f, 0.01f, 0.02f, 0.82f));
+            DrawHeroDrone();
+
+            Rect panel = MenuPanelRect(460f, 560f);
+            DrawPanel(panel, new Color(0.004f, 0.01f, 0.018f, 0.86f));
+            DrawOutlineRect(new Rect(panel.x - 1f, panel.y - 1f, panel.width + 2f, panel.height + 2f), new Color(0.1f, 0.95f, 1f, 0.34f), 1f);
             GUILayout.BeginArea(Inset(panel, 28f));
-            GUILayout.Label("AERIAL", titleStyle);
+            GUILayout.Label("Aerial", titleStyle);
+            GUILayout.Label("AUTOMATIC VELOCITY  /  PORTAL COURSE", eyebrowStyle);
+            GUILayout.Space(8f);
             GUILayout.Label("Space Arcade Ring Racing", subtitleStyle);
-            GUILayout.Space(26f);
+            GUILayout.Space(28f);
             if (DrawButton("Play"))
             {
                 GameManager.Instance.StartFirstUnlockedLevel();
@@ -159,6 +168,8 @@ namespace Drift
                 GameManager.Instance.QuitGame();
             }
 
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("WASD position  |  Arrows burst and roll", subtitleStyle);
             GUILayout.EndArea();
         }
 
@@ -332,7 +343,7 @@ namespace Drift
             titleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 46,
+                fontSize = 54,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = RuntimeVisualFactory.CurrentRingColor }
             };
@@ -340,8 +351,16 @@ namespace Drift
             subtitleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 18,
+                fontSize = 16,
                 normal = { textColor = new Color(0.75f, 0.82f, 0.95f) }
+            };
+
+            eyebrowStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 12,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(0.96f, 0.22f, 0.72f) }
             };
 
             hudStyle = new GUIStyle(GUI.skin.label)
@@ -357,7 +376,7 @@ namespace Drift
                 normal = { background = Texture2D.whiteTexture }
             };
 
-            buttonStyle = BuildButtonStyle(new Color(0.05f, 0.12f, 0.2f, 0.94f), Color.white);
+            buttonStyle = BuildButtonStyle(new Color(0.035f, 0.1f, 0.18f, 0.96f), Color.white);
             disabledButtonStyle = BuildButtonStyle(new Color(0.13f, 0.14f, 0.17f, 0.72f), new Color(0.55f, 0.58f, 0.64f));
             completedButtonStyle = BuildButtonStyle(new Color(0.08f, 0.34f, 0.22f, 0.94f), Color.white);
         }
@@ -424,30 +443,107 @@ namespace Drift
         private void DrawMenuBackdrop()
         {
             Color previous = GUI.color;
-            GUI.color = new Color(0.01f, 0.025f, 0.05f, 1f);
+            float t = Time.realtimeSinceStartup;
+            GUI.color = new Color(0.004f, 0.008f, 0.018f, 1f);
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = previous;
 
-            float centerX = Screen.width * 0.52f;
-            for (int i = 0; i < 10; i++)
+            DrawStarfield(t);
+            DrawCorridorLines(t);
+
+            float centerX = Screen.width * 0.68f + Mathf.Sin(t * 0.22f) * 18f;
+            float centerY = Screen.height * 0.49f + Mathf.Sin(t * 0.31f) * 14f;
+            for (int i = 0; i < 13; i++)
             {
-                float pulse = Mathf.Sin(Time.realtimeSinceStartup * 0.7f + i * 0.55f) * 8f;
-                float size = 80f + i * 58f + pulse;
-                float y = Screen.height * 0.48f + Mathf.Sin(Time.realtimeSinceStartup * 0.25f) * 16f;
-                Rect ring = new Rect(centerX - size * 0.5f, y - size * 0.5f, size, size);
-                Color color = Color.Lerp(new Color(0.1f, 0.9f, 1f, 0.08f), new Color(1f, 0.18f, 0.62f, 0.12f), i / 9f);
-                DrawOutlineRect(ring, color, 2f);
+                float depth = i / 12f;
+                float pulse = Mathf.Sin(t * 0.85f + i * 0.55f) * 8f;
+                float size = 92f + i * 54f + pulse;
+                Rect ring = new Rect(centerX - size * 0.5f, centerY - size * 0.31f, size, size * 0.62f);
+                Color color = Color.Lerp(new Color(0.1f, 0.95f, 1f, 0.08f), new Color(1f, 0.18f, 0.62f, 0.18f), depth);
+                DrawOutlineRect(ring, color, i == 0 ? 3f : 2f);
             }
+        }
+
+        private void DrawHeroDrone()
+        {
+            if (Screen.width < 900f)
+            {
+                return;
+            }
+
+            float t = Time.realtimeSinceStartup;
+            float x = Screen.width * 0.68f;
+            float y = Screen.height * 0.49f + Mathf.Sin(t * 1.4f) * 9f;
+            float scale = Mathf.Clamp(Screen.width / 1280f, 0.85f, 1.25f);
+
+            DrawRect(new Rect(x - 54f * scale, y - 10f * scale, 108f * scale, 20f * scale), new Color(0.06f, 0.08f, 0.13f, 0.94f));
+            DrawRect(new Rect(x - 30f * scale, y - 22f * scale, 60f * scale, 44f * scale), new Color(0.78f, 0.9f, 1f, 0.9f));
+            DrawRect(new Rect(x - 15f * scale, y - 8f * scale, 30f * scale, 16f * scale), new Color(0.08f, 0.11f, 0.18f, 0.98f));
+            DrawRect(new Rect(x - 3f * scale, y - 30f * scale, 6f * scale, 12f * scale), new Color(0.16f, 1f, 0.95f, 0.9f));
+
+            Vector2[] rotors =
+            {
+                new Vector2(-78f, -40f),
+                new Vector2(78f, -40f),
+                new Vector2(-78f, 40f),
+                new Vector2(78f, 40f)
+            };
+
+            foreach (Vector2 rotor in rotors)
+            {
+                Rect rotorRect = new Rect(x + rotor.x * scale - 19f * scale, y + rotor.y * scale - 19f * scale, 38f * scale, 38f * scale);
+                DrawOutlineRect(rotorRect, new Color(0.16f, 1f, 0.95f, 0.42f), 2f);
+                DrawRect(new Rect(rotorRect.center.x - 5f * scale, rotorRect.center.y - 5f * scale, 10f * scale, 10f * scale), new Color(0.16f, 1f, 0.95f, 0.78f));
+            }
+
+            DrawRect(new Rect(x - 70f * scale, y + 62f * scale, 140f * scale, 2f * scale), new Color(0.16f, 1f, 0.95f, 0.22f));
+            DrawRect(new Rect(x - 40f * scale, y + 72f * scale, 80f * scale, 2f * scale), new Color(1f, 0.2f, 0.7f, 0.22f));
+        }
+
+        private static void DrawStarfield(float time)
+        {
+            for (int i = 0; i < 72; i++)
+            {
+                float seed = i * 37.719f;
+                float x = Mathf.Repeat(Mathf.Sin(seed) * 8273f + time * (4f + i % 5), Screen.width);
+                float y = Mathf.Repeat(Mathf.Cos(seed * 1.31f) * 4317f + time * (1.5f + i % 3), Screen.height);
+                float size = 1f + (i % 3);
+                Color color = i % 5 == 0 ? new Color(1f, 0.2f, 0.75f, 0.42f) : new Color(0.55f, 0.9f, 1f, 0.38f);
+                DrawRect(new Rect(x, y, size, size), color);
+            }
+        }
+
+        private static void DrawCorridorLines(float time)
+        {
+            float horizonY = Screen.height * 0.52f + Mathf.Sin(time * 0.2f) * 10f;
+            float drift = Mathf.Sin(time * 0.25f) * 22f;
+            Color cyan = new Color(0.1f, 0.9f, 1f, 0.18f);
+            Color magenta = new Color(1f, 0.16f, 0.62f, 0.14f);
+
+            for (int i = 0; i < 7; i++)
+            {
+                float offset = 90f + i * 92f + Mathf.Repeat(time * 32f, 92f);
+                DrawRect(new Rect(Screen.width * 0.5f + drift - offset, horizonY + i * 16f, offset * 1.3f, 2f), i % 2 == 0 ? cyan : magenta);
+                DrawRect(new Rect(Screen.width * 0.5f + drift, horizonY + i * 16f, offset * 1.3f, 2f), i % 2 == 0 ? magenta : cyan);
+            }
+
+            DrawRect(new Rect(0f, horizonY - 1f, Screen.width, 2f), new Color(0.1f, 0.9f, 1f, 0.12f));
+            DrawRect(new Rect(0f, Screen.height * 0.82f, Screen.width, 2f), new Color(1f, 0.16f, 0.62f, 0.1f));
         }
 
         private static void DrawOutlineRect(Rect rect, Color color, float thickness)
         {
+            DrawRect(new Rect(rect.xMin, rect.yMin, rect.width, thickness), color);
+            DrawRect(new Rect(rect.xMin, rect.yMax - thickness, rect.width, thickness), color);
+            DrawRect(new Rect(rect.xMin, rect.yMin, thickness, rect.height), color);
+            DrawRect(new Rect(rect.xMax - thickness, rect.yMin, thickness, rect.height), color);
+        }
+
+        private static void DrawRect(Rect rect, Color color)
+        {
             Color previous = GUI.color;
             GUI.color = color;
-            GUI.DrawTexture(new Rect(rect.xMin, rect.yMin, rect.width, thickness), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(rect.xMin, rect.yMax - thickness, rect.width, thickness), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(rect.xMin, rect.yMin, thickness, rect.height), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(rect.xMax - thickness, rect.yMin, thickness, rect.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
             GUI.color = previous;
         }
 
@@ -472,11 +568,30 @@ namespace Drift
             GUI.color = previous;
         }
 
+        private void DrawTransitionOverlay()
+        {
+            float elapsed = Time.realtimeSinceStartup - viewTransitionStart;
+            float alpha = Mathf.Clamp01(1f - elapsed / 0.28f) * 0.42f;
+            if (alpha > 0.001f)
+            {
+                DrawFullscreenTint(new Color(0f, 0f, 0f, alpha));
+            }
+        }
+
         private static Rect CenteredPanel(float width, float height)
         {
             width = Mathf.Min(width, Screen.width - 48f);
             height = Mathf.Min(height, Screen.height - 48f);
             return new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
+        }
+
+        private static Rect MenuPanelRect(float width, float height)
+        {
+            width = Mathf.Min(width, Screen.width - 48f);
+            height = Mathf.Min(height, Screen.height - 48f);
+            float x = Screen.width >= 900f ? 72f : (Screen.width - width) * 0.5f;
+            float y = (Screen.height - height) * 0.5f;
+            return new Rect(x, y, width, height);
         }
 
         private static Rect Inset(Rect rect, float inset)
@@ -496,6 +611,16 @@ namespace Drift
             GUIStyle copy = new GUIStyle(source);
             copy.alignment = TextAnchor.MiddleRight;
             return copy;
+        }
+
+        private void SetView(View nextView)
+        {
+            if (currentView != nextView)
+            {
+                viewTransitionStart = Time.realtimeSinceStartup;
+            }
+
+            currentView = nextView;
         }
     }
 }
