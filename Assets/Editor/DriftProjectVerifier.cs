@@ -12,7 +12,7 @@ namespace DriftEditor
 {
     public static class DriftProjectVerifier
     {
-        [MenuItem("Drift/Run Project Verifier")]
+        [MenuItem("Aerial/Run Project Verifier")]
         public static void RunFromMenu()
         {
             RunChecks(exitEditor: false);
@@ -35,7 +35,7 @@ namespace DriftEditor
 
             if (failures.Count == 0)
             {
-                Debug.Log("Drift project verifier passed.");
+                Debug.Log("Aerial project verifier passed.");
                 if (exitEditor)
                 {
                     EditorApplication.Exit(0);
@@ -68,7 +68,12 @@ namespace DriftEditor
                 "Drift.UIManager",
                 "Drift.LevelSelectManager",
                 "Drift.BoundaryReset",
-                "Drift.ObstacleReset"
+                "Drift.ObstacleReset",
+                "Drift.PortalBase",
+                "Drift.SpeedPortal",
+                "Drift.GravityPortal",
+                "Drift.SizePortal",
+                "Drift.PortalManager"
             };
 
             foreach (string typeName in requiredTypes)
@@ -83,16 +88,22 @@ namespace DriftEditor
         private static void CheckLevelCatalog(List<string> failures)
         {
             IReadOnlyList<LevelDefinition> levels = LevelCatalog.GetLevels();
-            if (levels.Count < 5)
+            if (levels.Count < 7)
             {
-                failures.Add($"Expected at least 5 levels, found {levels.Count}.");
+                failures.Add($"Expected at least 7 levels including tutorial and expanded courses, found {levels.Count}.");
             }
 
             int totalRings = 0;
+            int portalCount = 0;
+            bool hasTutorial = false;
+            HashSet<EnvironmentTheme> themes = new HashSet<EnvironmentTheme>();
             for (int i = 0; i < levels.Count; i++)
             {
                 LevelDefinition level = levels[i];
                 totalRings += level.Rings.Length;
+                portalCount += level.Portals.Length;
+                hasTutorial |= level.IsTutorial;
+                themes.Add(level.Theme);
                 if (level.LevelNumber != i + 1)
                 {
                     failures.Add($"Level index {i} has level number {level.LevelNumber}.");
@@ -114,9 +125,24 @@ namespace DriftEditor
                 }
             }
 
-            if (totalRings < 50)
+            if (!hasTutorial)
             {
-                failures.Add($"Expected at least 50 rings across levels, found {totalRings}.");
+                failures.Add("Expected a playable tutorial level.");
+            }
+
+            if (themes.Count < 5)
+            {
+                failures.Add($"Expected all five Aerial environment themes, found {themes.Count}.");
+            }
+
+            if (portalCount < 10)
+            {
+                failures.Add($"Expected a substantial portal set, found {portalCount}.");
+            }
+
+            if (totalRings < 75)
+            {
+                failures.Add($"Expected at least 75 rings across expanded levels, found {totalRings}.");
             }
         }
 
@@ -126,20 +152,20 @@ namespace DriftEditor
             PlayerPrefs.DeleteKey(ProgressionService.CompletedLevelsKey);
 
             ProgressionService progression = new ProgressionService();
-            if (progression.GetHighestUnlockedLevel() != 1)
+            if (progression.GetHighestUnlockedLevel() != LevelCatalog.GetLevels().Count)
             {
-                failures.Add("Progression should unlock level 1 by default.");
+                failures.Add("All Aerial levels should be accessible by default.");
             }
 
-            if (!progression.IsLevelUnlocked(1) || progression.IsLevelUnlocked(2))
+            if (!progression.IsLevelUnlocked(1) || !progression.IsLevelUnlocked(LevelCatalog.GetLevels().Count))
             {
-                failures.Add("Progression initial lock state is incorrect.");
+                failures.Add("Progression initial all-level access state is incorrect.");
             }
 
             progression.MarkLevelComplete(1);
-            if (!progression.IsLevelCompleted(1) || !progression.IsLevelUnlocked(2))
+            if (!progression.IsLevelCompleted(1) || !progression.IsLevelUnlocked(LevelCatalog.GetLevels().Count))
             {
-                failures.Add("Completing level 1 should mark it complete and unlock level 2.");
+                failures.Add("Completing level 1 should mark it complete without locking later levels.");
             }
         }
 
@@ -199,6 +225,12 @@ namespace DriftEditor
             if (ringCount < 10)
             {
                 failures.Add($"Starting level 1 created too few rings: {ringCount}.");
+            }
+
+            int portalCount = Object.FindObjectsByType<PortalBase>(FindObjectsSortMode.None).Length;
+            if (portalCount < 3)
+            {
+                failures.Add($"Starting tutorial created too few portals: {portalCount}.");
             }
 
             manager.CompleteCurrentLevel();

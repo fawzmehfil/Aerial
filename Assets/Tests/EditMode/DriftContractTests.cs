@@ -22,7 +22,12 @@ public sealed class DriftContractTests
             "Drift.UIManager",
             "Drift.LevelSelectManager",
             "Drift.BoundaryReset",
-            "Drift.ObstacleReset"
+            "Drift.ObstacleReset",
+            "Drift.PortalBase",
+            "Drift.SpeedPortal",
+            "Drift.GravityPortal",
+            "Drift.SizePortal",
+            "Drift.PortalManager"
         };
 
         foreach (string typeName in requiredTypes)
@@ -32,7 +37,7 @@ public sealed class DriftContractTests
     }
 
     [Test]
-    public void LevelCatalogDefinesFivePlayableLevels()
+    public void LevelCatalogDefinesExpandedAerialLevels()
     {
         Type catalogType = RequireType("Drift.LevelCatalog");
         MethodInfo getLevels = catalogType.GetMethod("GetLevels", BindingFlags.Public | BindingFlags.Static);
@@ -41,21 +46,27 @@ public sealed class DriftContractTests
         IEnumerable levelEnumerable = (IEnumerable)getLevels.Invoke(null, null);
         Assert.That(levelEnumerable, Is.Not.Null);
         object[] levels = levelEnumerable.Cast<object>().ToArray();
-        Assert.That(levels.Length, Is.GreaterThanOrEqualTo(5));
+        Assert.That(levels.Length, Is.GreaterThanOrEqualTo(7));
+        Assert.That(levels.Any(level => (bool)GetField(level, "IsTutorial")), Is.True);
 
-        for (int i = 0; i < 5; i++)
+        int portalCount = 0;
+        for (int i = 0; i < levels.Length; i++)
         {
             object level = levels[i];
             int levelNumber = (int)GetField(level, "LevelNumber");
             string displayName = (string)GetField(level, "DisplayName");
             float forwardSpeed = (float)GetField(level, "ForwardSpeed");
             IList rings = (IList)GetField(level, "Rings");
+            IList portals = (IList)GetField(level, "Portals");
+            portalCount += portals.Count;
 
             Assert.That(levelNumber, Is.EqualTo(i + 1));
             Assert.That(displayName, Is.Not.Empty);
             Assert.That(forwardSpeed, Is.GreaterThan(0f));
             Assert.That(rings.Count, Is.GreaterThanOrEqualTo(10), $"{displayName} should have a substantial ring route.");
         }
+
+        Assert.That(portalCount, Is.GreaterThanOrEqualTo(10));
     }
 
     [Test]
@@ -67,9 +78,9 @@ public sealed class DriftContractTests
         Type progressionType = RequireType("Drift.ProgressionService");
         object progression = Activator.CreateInstance(progressionType);
 
-        Assert.That(Invoke<int>(progression, "GetHighestUnlockedLevel"), Is.EqualTo(1));
+        Assert.That(Invoke<int>(progression, "GetHighestUnlockedLevel"), Is.EqualTo(Drift.LevelCatalog.GetLevels().Count));
         Assert.That(Invoke<bool>(progression, "IsLevelUnlocked", 1), Is.True);
-        Assert.That(Invoke<bool>(progression, "IsLevelUnlocked", 2), Is.False);
+        Assert.That(Invoke<bool>(progression, "IsLevelUnlocked", Drift.LevelCatalog.GetLevels().Count), Is.True);
 
         Invoke(progression, "MarkLevelComplete", 1);
 

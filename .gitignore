@@ -44,3 +44,11 @@ Thumbs.db
 Desktop.ini
 .idea/
 .vscode/
+
+# Local planning docs
+GOALS.md
+GOALS2.md
+
+# Local generated assets
+backgrounds/
+Backgrounds/

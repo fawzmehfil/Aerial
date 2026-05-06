@@ -8,6 +8,7 @@ namespace Drift
         private GameObject currentLevelRoot;
         private DroneController currentDrone;
         private LevelDefinition currentLevel;
+        private PortalManager portalManager;
 
         public DroneController CurrentDrone => currentDrone;
         public LevelDefinition CurrentLevel => currentLevel;
@@ -39,6 +40,19 @@ namespace Drift
             foreach (ObstacleSpec obstacle in level.Obstacles)
             {
                 RuntimeVisualFactory.CreateObstacle(obstacleRoot.transform, obstacle);
+            }
+
+            portalManager = GetComponent<PortalManager>();
+            if (portalManager == null)
+            {
+                portalManager = gameObject.AddComponent<PortalManager>();
+            }
+
+            GameObject portalRoot = new GameObject("Portals");
+            portalRoot.transform.SetParent(currentLevelRoot.transform, false);
+            foreach (PortalSpec portal in level.Portals)
+            {
+                portalManager.CreatePortal(portalRoot.transform, portal);
             }
 
             ringManager.Configure(rings, currentDrone);
@@ -88,6 +102,8 @@ namespace Drift
             float courseLength = level.Rings[level.Rings.Length - 1].Position.z + 28f;
             float halfX = level.Boundary.x;
             float halfY = level.Boundary.y;
+
+            RuntimeVisualFactory.CreateEnvironment(frameRoot.transform, level);
 
             for (float z = 0f; z <= courseLength; z += 16f)
             {

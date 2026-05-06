@@ -11,7 +11,8 @@ namespace Drift
         Playing,
         Paused,
         Failed,
-        LevelComplete
+        LevelComplete,
+        Settings
     }
 
     public sealed class GameManager : MonoBehaviour
@@ -25,11 +26,13 @@ namespace Drift
         private RingManager ringManager;
         private UIManager uiManager;
         private CameraFollow cameraFollow;
+        private PortalManager portalManager;
         private AudioSource audioSource;
         private AudioClip ringPassClip;
         private AudioClip failClip;
         private AudioClip completeClip;
         private int currentLevelNumber = 1;
+        private float effectsVolume = 1f;
         private Coroutine failureRoutine;
 
         public ProgressionService Progression => progression;
@@ -65,7 +68,30 @@ namespace Drift
 
         public void StartFirstUnlockedLevel()
         {
-            StartLevel(progression.GetHighestUnlockedLevel());
+            for (int i = 0; i < levels.Count; i++)
+            {
+                if (!levels[i].IsTutorial)
+                {
+                    StartLevel(levels[i].LevelNumber);
+                    return;
+                }
+            }
+
+            StartLevel(1);
+        }
+
+        public void StartTutorial()
+        {
+            for (int i = 0; i < levels.Count; i++)
+            {
+                if (levels[i].IsTutorial)
+                {
+                    StartLevel(levels[i].LevelNumber);
+                    return;
+                }
+            }
+
+            StartLevel(1);
         }
 
         public void StartLevel(int levelNumber)
@@ -131,7 +157,7 @@ namespace Drift
             }
 
             state = GameState.Failed;
-            audioSource.PlayOneShot(failClip, 0.8f);
+            audioSource.PlayOneShot(failClip, 0.8f * effectsVolume);
             uiManager.ShowFailure(reason);
             failureRoutine = StartCoroutine(ResetAfterFailure());
         }
@@ -145,7 +171,7 @@ namespace Drift
 
             state = GameState.LevelComplete;
             progression.MarkLevelComplete(currentLevelNumber);
-            audioSource.PlayOneShot(completeClip, 0.75f);
+            audioSource.PlayOneShot(completeClip, 0.75f * effectsVolume);
             uiManager.ShowLevelComplete(currentLevelNumber, currentLevelNumber < levels.Count);
         }
 
@@ -159,9 +185,44 @@ namespace Drift
             uiManager.UpdateHudProgress(ringManager.CurrentRingNumber, ringManager.TotalRings);
         }
 
+        public void ShowPortalEffect(string label, float duration)
+        {
+            uiManager.ShowPortalEffect(label, duration);
+            if (audioSource != null)
+            {
+                audioSource.PlayOneShot(RuntimeVisualFactory.CreateToneClip("Portal Activate", 420f, 0.24f, 0.28f), 0.55f * effectsVolume);
+            }
+        }
+
         public void PlayRingPassFeedback()
         {
-            audioSource.PlayOneShot(ringPassClip, 0.55f);
+            audioSource.PlayOneShot(ringPassClip, 0.55f * effectsVolume);
+        }
+
+        public void ShowSettings()
+        {
+            state = GameState.Settings;
+            Time.timeScale = 1f;
+            levelManager.ClearLevel();
+            uiManager.ShowSettings();
+        }
+
+        public void SetMasterVolume(float value)
+        {
+            AudioListener.volume = Mathf.Clamp01(value);
+        }
+
+        public void SetEffectsVolume(float value)
+        {
+            effectsVolume = Mathf.Clamp01(value);
+        }
+
+        public void SetCameraSmoothing(float value)
+        {
+            if (cameraFollow != null)
+            {
+                cameraFollow.SetPositionSmoothing(value);
+            }
         }
 
         public void QuitGame()
@@ -213,6 +274,10 @@ namespace Drift
                 {
                     ShowMainMenu();
                 }
+                else if (state == GameState.Settings)
+                {
+                    ShowMainMenu();
+                }
             }
         }
 
@@ -222,6 +287,12 @@ namespace Drift
             if (levelManager == null)
             {
                 levelManager = gameObject.AddComponent<LevelManager>();
+            }
+
+            portalManager = GetComponent<PortalManager>();
+            if (portalManager == null)
+            {
+                portalManager = gameObject.AddComponent<PortalManager>();
             }
 
             ringManager = GetComponent<RingManager>();

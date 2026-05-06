@@ -15,7 +15,9 @@ namespace Drift
         private static Material droneHitboxMaterial;
         private static Material droneAccentMaterial;
         private static Material obstacleMaterial;
+        private static Material debrisMaterial;
         private static Material guideMaterial;
+        private static Material panelMaterial;
 
         public static Material CreateNeonMaterial(string name, Color color, float emissionStrength, bool transparent = false)
         {
@@ -125,6 +127,8 @@ namespace Drift
                 trail.endColor = new Color(0.15f, 0.95f, 1f, 0f);
             }
 
+            CreateAbilityParticles(visualRoot.transform);
+
             DroneController controller = root.AddComponent<DroneController>();
             controller.Configure(forwardSpeed, boundary, visualRoot.transform);
 
@@ -168,29 +172,119 @@ namespace Drift
             trigger.isTrigger = true;
             trigger.size = new Vector3(spec.Radius * 2f, spec.Radius * 2f, 2.8f);
 
-            ParticleSystem particles = CreateRingParticles(root.transform);
+            ParticleSystem particles = CreateRingParticles(root.transform, CurrentRingColor);
+            ParticleSystem missParticles = CreateRingParticles(root.transform, new Color(1f, 0.12f, 0.08f));
 
             RingCheckpoint checkpoint = root.AddComponent<RingCheckpoint>();
-            checkpoint.Configure(index, spec.Radius * 0.86f, manager, renderers.ToArray(), particles, trigger);
+            checkpoint.Configure(index, spec.Radius * 0.84f, manager, renderers.ToArray(), particles, missParticles, trigger);
             return checkpoint;
         }
 
         public static GameObject CreateObstacle(Transform parent, ObstacleSpec spec)
         {
-            if (obstacleMaterial == null)
-            {
-                obstacleMaterial = CreateNeonMaterial("Obstacle Magenta", new Color(0.95f, 0.16f, 0.45f), 1.8f);
-            }
-
-            GameObject obstacle = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Material material = GetObstacleMaterial(spec.Kind);
+            PrimitiveType primitiveType = spec.Kind == ObstacleKind.CosmicDebris ? PrimitiveType.Sphere : PrimitiveType.Cube;
+            GameObject obstacle = GameObject.CreatePrimitive(primitiveType);
             obstacle.name = "Obstacle";
             obstacle.transform.SetParent(parent, false);
             obstacle.transform.position = spec.Position;
+            obstacle.transform.rotation = Quaternion.Euler(0f, 0f, spec.RotationZ);
             obstacle.transform.localScale = spec.Size;
-            obstacle.GetComponent<Renderer>().sharedMaterial = obstacleMaterial;
-            obstacle.GetComponent<BoxCollider>().isTrigger = true;
+            obstacle.GetComponent<Renderer>().sharedMaterial = material;
+
+            Collider collider = obstacle.GetComponent<Collider>();
+            collider.isTrigger = true;
             obstacle.AddComponent<ObstacleReset>();
+
+            if (spec.Kind == ObstacleKind.Pillar)
+            {
+                AddPrimitive(obstacle.transform, PrimitiveType.Cube, "Danger Light", Vector3.zero, new Vector3(1.04f, 0.08f, 1.04f), CreateNeonMaterial("Pillar Danger Light", new Color(1f, 0.25f, 0.08f), 2.8f));
+            }
+            else if (spec.Kind == ObstacleKind.CosmicDebris)
+            {
+                obstacle.transform.rotation = Quaternion.Euler(spec.RotationZ * 0.7f, spec.RotationZ * 1.3f, spec.RotationZ);
+            }
+
             return obstacle;
+        }
+
+        public static PortalBase CreatePortal(Transform parent, PortalSpec spec)
+        {
+            GameObject root = new GameObject($"{spec.Kind} Portal");
+            root.transform.SetParent(parent, false);
+            root.transform.position = spec.Position;
+
+            Color color = GetPortalColor(spec.Kind);
+            Material material = CreateNeonMaterial($"{spec.Kind} Material", color, 3.5f, true);
+            int segmentCount = 24;
+            for (int i = 0; i < segmentCount; i++)
+            {
+                float angle = i / (float)segmentCount * Mathf.PI * 2f;
+                Vector3 localPosition = new Vector3(Mathf.Cos(angle) * spec.Radius, Mathf.Sin(angle) * spec.Radius, 0f);
+                GameObject segment = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                segment.name = "Portal Segment";
+                segment.transform.SetParent(root.transform, false);
+                segment.transform.localPosition = localPosition;
+                segment.transform.localRotation = Quaternion.Euler(0f, 0f, angle * Mathf.Rad2Deg + 90f);
+                segment.transform.localScale = new Vector3(spec.Radius * 0.24f, 0.11f, 0.48f);
+                segment.GetComponent<Renderer>().sharedMaterial = material;
+                DestroyObject(segment.GetComponent<Collider>());
+            }
+
+            GameObject core = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            core.name = "Portal Core";
+            core.transform.SetParent(root.transform, false);
+            core.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            core.transform.localScale = new Vector3(spec.Radius * 1.45f, 0.04f, spec.Radius * 1.45f);
+            core.GetComponent<Renderer>().sharedMaterial = CreateNeonMaterial($"{spec.Kind} Core", new Color(color.r, color.g, color.b, 0.16f), 1.2f, true);
+            DestroyObject(core.GetComponent<Collider>());
+
+            BoxCollider trigger = root.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(spec.Radius * 1.7f, spec.Radius * 1.7f, 2.2f);
+
+            ParticleSystem particles = CreateRingParticles(root.transform, color);
+            PortalBase portal;
+            if (spec.Kind == PortalKind.SpeedFast || spec.Kind == PortalKind.SpeedSlow || spec.Kind == PortalKind.SpeedNormal)
+            {
+                portal = root.AddComponent<SpeedPortal>();
+            }
+            else if (spec.Kind == PortalKind.GravityInverted || spec.Kind == PortalKind.GravityNormal || spec.Kind == PortalKind.GravitySideways)
+            {
+                portal = root.AddComponent<GravityPortal>();
+            }
+            else
+            {
+                portal = root.AddComponent<SizePortal>();
+            }
+
+            portal.Configure(spec.Kind, spec.Duration, particles);
+            return portal;
+        }
+
+        public static void CreateEnvironment(Transform parent, LevelDefinition level)
+        {
+            float courseLength = level.Rings[level.Rings.Length - 1].Position.z + 34f;
+            switch (level.Theme)
+            {
+                case EnvironmentTheme.MinimalLightTunnel:
+                    CreateRectangularTunnel(parent, level.Boundary, courseLength, new Color(0.72f, 0.74f, 0.7f), Color.white, 18f, false);
+                    break;
+                case EnvironmentTheme.NeonCyanCorridor:
+                    CreateRectangularTunnel(parent, level.Boundary, courseLength, new Color(0.05f, 0.08f, 0.16f), new Color(0.08f, 0.95f, 1f), 12f, true);
+                    break;
+                case EnvironmentTheme.RedGateIndustrial:
+                    CreateRectangularTunnel(parent, level.Boundary, courseLength, new Color(0.12f, 0.065f, 0.075f), new Color(1f, 0.18f, 0.12f), 14f, true);
+                    break;
+                case EnvironmentTheme.CosmicRingVoid:
+                    CreateCosmicVoid(parent, level.Boundary, courseLength);
+                    break;
+                default:
+                    CreateRectangularTunnel(parent, level.Boundary, courseLength * 0.45f, new Color(0.04f, 0.075f, 0.13f), new Color(0.1f, 0.9f, 1f), 14f, true);
+                    CreateCosmicVoid(parent, level.Boundary, courseLength);
+                    CreateRectangularTunnel(parent, level.Boundary, courseLength, new Color(0.1f, 0.06f, 0.08f), new Color(1f, 0.16f, 0.2f), 20f, false, courseLength * 0.55f);
+                    break;
+            }
         }
 
         public static GameObject CreateGuideRail(Transform parent, Vector3 position, Vector3 scale)
@@ -268,7 +362,7 @@ namespace Drift
             }
         }
 
-        private static ParticleSystem CreateRingParticles(Transform parent)
+        private static ParticleSystem CreateRingParticles(Transform parent, Color color)
         {
             GameObject particleObject = new GameObject("Pass Burst");
             particleObject.transform.SetParent(parent, false);
@@ -277,7 +371,7 @@ namespace Drift
             main.startLifetime = 0.35f;
             main.startSpeed = 8f;
             main.startSize = 0.08f;
-            main.startColor = CurrentRingColor;
+            main.startColor = color;
             main.maxParticles = 96;
             main.loop = false;
             main.playOnAwake = false;
@@ -293,6 +387,123 @@ namespace Drift
             shape.radius = 1.4f;
 
             return particles;
+        }
+
+        private static ParticleSystem CreateAbilityParticles(Transform parent)
+        {
+            GameObject particleObject = new GameObject("Ability Burst");
+            particleObject.transform.SetParent(parent, false);
+            particleObject.transform.localPosition = Vector3.zero;
+            ParticleSystem particles = particleObject.AddComponent<ParticleSystem>();
+            ParticleSystem.MainModule main = particles.main;
+            main.startLifetime = 0.18f;
+            main.startSpeed = 5.5f;
+            main.startSize = 0.05f;
+            main.startColor = new Color(0.35f, 1f, 0.95f, 0.85f);
+            main.maxParticles = 48;
+            main.loop = false;
+            main.playOnAwake = false;
+
+            ParticleSystem.EmissionModule emission = particles.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 24) });
+
+            ParticleSystem.ShapeModule shape = particles.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.35f;
+            return particles;
+        }
+
+        private static Material GetObstacleMaterial(ObstacleKind kind)
+        {
+            if (kind == ObstacleKind.CosmicDebris)
+            {
+                if (debrisMaterial == null)
+                {
+                    debrisMaterial = CreateNeonMaterial("Cosmic Debris Violet", new Color(0.36f, 0.2f, 0.58f), 0.55f);
+                }
+
+                return debrisMaterial;
+            }
+
+            if (obstacleMaterial == null)
+            {
+                obstacleMaterial = CreateNeonMaterial("Obstacle Red Magenta", new Color(0.95f, 0.16f, 0.35f), 2.1f);
+            }
+
+            return obstacleMaterial;
+        }
+
+        private static Color GetPortalColor(PortalKind kind)
+        {
+            switch (kind)
+            {
+                case PortalKind.SpeedFast:
+                    return new Color(1f, 0.32f, 0.08f);
+                case PortalKind.SpeedSlow:
+                    return new Color(0.08f, 0.72f, 1f);
+                case PortalKind.GravityInverted:
+                case PortalKind.GravitySideways:
+                    return new Color(0.95f, 0.95f, 1f);
+                case PortalKind.SizeSmall:
+                case PortalKind.SizeLarge:
+                    return new Color(0.74f, 0.18f, 1f);
+                default:
+                    return new Color(0.38f, 1f, 0.52f);
+            }
+        }
+
+        private static void CreateRectangularTunnel(Transform parent, Vector2 boundary, float courseLength, Color surfaceColor, Color lightColor, float spacing, bool addPanels, float startZ = 0f)
+        {
+            Material surface = GetPanelMaterial(surfaceColor);
+            Material light = CreateNeonMaterial("Tunnel Light", lightColor, 2.5f, true);
+            float width = boundary.x * 2.3f;
+            float height = boundary.y * 2.35f;
+
+            for (float z = startZ; z <= courseLength; z += spacing)
+            {
+                GameObject frame = new GameObject("Light Frame");
+                frame.transform.SetParent(parent, false);
+                frame.transform.position = new Vector3(0f, 0f, z);
+                AddPrimitive(frame.transform, PrimitiveType.Cube, "Top Light", new Vector3(0f, height * 0.5f, 0f), new Vector3(width, 0.08f, 0.16f), light);
+                AddPrimitive(frame.transform, PrimitiveType.Cube, "Bottom Light", new Vector3(0f, -height * 0.5f, 0f), new Vector3(width, 0.08f, 0.16f), light);
+                AddPrimitive(frame.transform, PrimitiveType.Cube, "Left Light", new Vector3(-width * 0.5f, 0f, 0f), new Vector3(0.08f, height, 0.16f), light);
+                AddPrimitive(frame.transform, PrimitiveType.Cube, "Right Light", new Vector3(width * 0.5f, 0f, 0f), new Vector3(0.08f, height, 0.16f), light);
+
+                if (addPanels && Mathf.FloorToInt(z / spacing) % 2 == 0)
+                {
+                    AddPrimitive(frame.transform, PrimitiveType.Cube, "Wall Panel Left", new Vector3(-width * 0.53f, 0f, spacing * 0.25f), new Vector3(0.08f, height * 0.72f, spacing * 0.55f), surface);
+                    AddPrimitive(frame.transform, PrimitiveType.Cube, "Wall Panel Right", new Vector3(width * 0.53f, 0f, spacing * 0.25f), new Vector3(0.08f, height * 0.72f, spacing * 0.55f), surface);
+                }
+            }
+        }
+
+        private static void CreateCosmicVoid(Transform parent, Vector2 boundary, float courseLength)
+        {
+            Material starMaterial = CreateNeonMaterial("Star Magenta", new Color(1f, 0.28f, 0.86f), 2.5f, true);
+            Material terrainMaterial = CreateNeonMaterial("Alien Terrain", new Color(0.18f, 0.08f, 0.28f), 0.35f);
+            for (int i = 0; i < 84; i++)
+            {
+                float z = 20f + (i * 17f) % Mathf.Max(courseLength, 40f);
+                float x = Mathf.Sin(i * 6.17f) * boundary.x * 3.4f;
+                float y = boundary.y + 4f + Mathf.Abs(Mathf.Cos(i * 2.31f)) * 7f;
+                GameObject star = AddPrimitive(parent, PrimitiveType.Sphere, "Star", new Vector3(x, y, z), Vector3.one * (0.05f + (i % 3) * 0.025f), starMaterial);
+                star.transform.localScale = Vector3.one * (0.06f + (i % 4) * 0.025f);
+            }
+
+            for (float z = 18f; z <= courseLength; z += 22f)
+            {
+                float x = Mathf.Sin(z * 0.19f) * boundary.x * 1.2f;
+                AddPrimitive(parent, PrimitiveType.Cube, "Distant Ridge", new Vector3(x, -boundary.y - 4.2f, z), new Vector3(boundary.x * 2.8f, 1.2f + Mathf.Sin(z) * 0.4f, 8f), terrainMaterial);
+            }
+        }
+
+        private static Material GetPanelMaterial(Color color)
+        {
+            panelMaterial = CreateNeonMaterial("Tunnel Panel", color, 0.05f);
+            return panelMaterial;
         }
     }
 }

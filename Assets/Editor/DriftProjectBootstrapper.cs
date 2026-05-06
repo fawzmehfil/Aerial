@@ -16,7 +16,7 @@ public static class DriftProjectBootstrapper
         EditorApplication.delayCall += EnsureProjectAssets;
     }
 
-    [MenuItem("Drift/Rebuild Generated Scene And Prefabs")]
+    [MenuItem("Aerial/Rebuild Generated Scene And Prefabs")]
     public static void EnsureProjectAssets()
     {
         if (!AssetDatabase.IsValidFolder(PrefabFolder))

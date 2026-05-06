@@ -22,6 +22,7 @@ public sealed class DriftRuntimeFlowTests
 
         Assert.That(Object.FindFirstObjectByType<DroneController>(), Is.Not.Null);
         Assert.That(Object.FindObjectsByType<RingCheckpoint>(FindObjectsSortMode.None).Length, Is.GreaterThanOrEqualTo(10));
+        Assert.That(Object.FindObjectsByType<PortalBase>(FindObjectsSortMode.None).Length, Is.GreaterThanOrEqualTo(3));
         Assert.That(Object.FindFirstObjectByType<CameraFollow>(), Is.Not.Null);
     }
 

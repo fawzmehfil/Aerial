@@ -15,22 +15,26 @@ namespace Drift
         [SerializeField] private float passRadius = 2f;
         [SerializeField] private Renderer[] renderers;
         [SerializeField] private ParticleSystem passParticles;
+        [SerializeField] private ParticleSystem missParticles;
         [SerializeField] private Collider triggerCollider;
 
         private RingManager ringManager;
         private RingVisualState state;
+        private float missPlaneOffset = 4f;
 
         public int RingIndex => ringIndex;
         public float ZPosition => transform.position.z;
+        public float PassRadius => passRadius;
         public bool IsCompleted => state == RingVisualState.Completed;
 
-        public void Configure(int index, float radius, RingManager manager, Renderer[] ringRenderers, ParticleSystem particles, Collider trigger)
+        public void Configure(int index, float radius, RingManager manager, Renderer[] ringRenderers, ParticleSystem particles, ParticleSystem missedParticles, Collider trigger)
         {
             ringIndex = index;
             passRadius = radius;
             ringManager = manager;
             renderers = ringRenderers;
             passParticles = particles;
+            missParticles = missedParticles;
             triggerCollider = trigger;
             SetState(RingVisualState.Future);
         }
@@ -85,6 +89,33 @@ namespace Drift
             }
         }
 
+        public void PlayMissEffect()
+        {
+            if (missParticles != null)
+            {
+                missParticles.Play();
+            }
+
+            foreach (Renderer ringRenderer in renderers)
+            {
+                if (ringRenderer == null)
+                {
+                    continue;
+                }
+
+                Material material = ringRenderer.material;
+                Color missColor = new Color(1f, 0.12f, 0.08f);
+                material.color = missColor;
+                material.SetColor("_EmissionColor", missColor * 4.5f);
+            }
+        }
+
+        public bool IsPastMissPlane(Vector3 dronePosition, float threshold)
+        {
+            missPlaneOffset = threshold;
+            return dronePosition.z > ZPosition + threshold;
+        }
+
         private void OnTriggerEnter(Collider other)
         {
             if (state != RingVisualState.Current || !other.CompareTag("Player"))
@@ -98,6 +129,15 @@ namespace Drift
             {
                 ringManager.PassRing(this);
             }
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            Gizmos.color = new Color(0.2f, 1f, 0.95f, 0.45f);
+            Gizmos.DrawWireSphere(transform.position, passRadius);
+            Gizmos.color = new Color(1f, 0.18f, 0.12f, 0.55f);
+            Vector3 center = transform.position + Vector3.forward * missPlaneOffset;
+            Gizmos.DrawWireCube(center, new Vector3(passRadius * 2.2f, passRadius * 2.2f, 0.08f));
         }
     }
 }

@@ -10,6 +10,7 @@ namespace Drift
         [SerializeField] private float rotationSmoothing = 9f;
         [SerializeField] private float baseFov = 70f;
         [SerializeField] private float maxFovKick = 8f;
+        [SerializeField] private float speedFovKick = 14f;
 
         private DroneController target;
         private Camera cameraComponent;
@@ -23,6 +24,11 @@ namespace Drift
                 transform.position = target.transform.TransformPoint(offset);
                 transform.LookAt(target.transform.position + Vector3.forward * 8f);
             }
+        }
+
+        public void SetPositionSmoothing(float value)
+        {
+            positionSmoothTime = Mathf.Clamp(value, 0.08f, 0.32f);
         }
 
         private void Awake()
@@ -41,11 +47,13 @@ namespace Drift
             Vector3 desiredPosition = target.transform.TransformPoint(offset);
             transform.position = Vector3.SmoothDamp(transform.position, desiredPosition, ref velocity, positionSmoothTime);
 
-            Vector3 lookPoint = target.transform.position + Vector3.forward * 10f + Vector3.up * 0.4f;
-            Quaternion desiredRotation = Quaternion.LookRotation(lookPoint - transform.position, Vector3.up);
+            Vector3 up = Quaternion.AngleAxis(target.OrientationRoll, Vector3.forward) * Vector3.up;
+            Vector3 lookPoint = target.transform.position + Vector3.forward * 10f + up * 0.4f;
+            Quaternion desiredRotation = Quaternion.LookRotation(lookPoint - transform.position, up);
             transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, rotationSmoothing * Time.deltaTime);
 
-            float targetFov = baseFov + target.LateralSpeedFraction * maxFovKick;
+            float speedKick = Mathf.Clamp(target.SpeedFraction - 1f, -0.35f, 0.65f) * speedFovKick;
+            float targetFov = baseFov + target.LateralSpeedFraction * maxFovKick + speedKick;
             cameraComponent.fieldOfView = Mathf.Lerp(cameraComponent.fieldOfView, targetFov, 5f * Time.deltaTime);
         }
     }

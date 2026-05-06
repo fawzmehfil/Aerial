@@ -12,7 +12,8 @@ namespace Drift
             Hud,
             Pause,
             Complete,
-            Failure
+            Failure,
+            Settings
         }
 
         private View currentView = View.MainMenu;
@@ -24,6 +25,12 @@ namespace Drift
         private string failureReason = "Missed Ring";
         private int completeLevelNumber;
         private bool completeHasNextLevel;
+        private string portalEffectLabel = string.Empty;
+        private float portalEffectUntil;
+        private float masterVolume = 1f;
+        private float effectsVolume = 1f;
+        private float cameraSmoothing = 0.18f;
+        private int graphicsQuality = 1;
         private LevelSelectManager levelSelectManager;
         private GUIStyle titleStyle;
         private GUIStyle subtitleStyle;
@@ -77,6 +84,17 @@ namespace Drift
             currentView = View.Failure;
         }
 
+        public void ShowSettings()
+        {
+            currentView = View.Settings;
+        }
+
+        public void ShowPortalEffect(string label, float duration)
+        {
+            portalEffectLabel = label;
+            portalEffectUntil = Time.time + Mathf.Max(duration, 1.2f);
+        }
+
         private void OnGUI()
         {
             EnsureStyles();
@@ -101,25 +119,39 @@ namespace Drift
                 case View.Failure:
                     DrawFailure();
                     break;
+                case View.Settings:
+                    DrawSettings();
+                    break;
             }
         }
 
         private void DrawMainMenu()
         {
-            Rect panel = CenteredPanel(440f, 390f);
-            DrawPanel(panel);
+            DrawMenuBackdrop();
+            Rect panel = CenteredPanel(500f, 520f);
+            DrawPanel(panel, new Color(0.006f, 0.01f, 0.02f, 0.82f));
             GUILayout.BeginArea(Inset(panel, 28f));
-            GUILayout.Label("DRIFT", titleStyle);
-            GUILayout.Label("FPV Ring Racing", subtitleStyle);
+            GUILayout.Label("AERIAL", titleStyle);
+            GUILayout.Label("Space Arcade Ring Racing", subtitleStyle);
             GUILayout.Space(26f);
             if (DrawButton("Play"))
             {
                 GameManager.Instance.StartFirstUnlockedLevel();
             }
 
+            if (DrawButton("Tutorial"))
+            {
+                GameManager.Instance.StartTutorial();
+            }
+
             if (DrawButton("Level Select"))
             {
                 GameManager.Instance.ShowLevelSelect();
+            }
+
+            if (DrawButton("Settings"))
+            {
+                GameManager.Instance.ShowSettings();
             }
 
             if (DrawButton("Quit"))
@@ -163,7 +195,17 @@ namespace Drift
         {
             GUI.Label(new Rect(24f, 18f, 420f, 34f), hudLevel != null ? hudLevel.DisplayName : "Level", hudStyle);
             GUI.Label(new Rect(Screen.width - 220f, 18f, 196f, 34f), $"{hudCurrentRing} / {hudTotalRings}", RightAligned(hudStyle));
-            GUI.Label(new Rect(Screen.width * 0.5f - 180f, Screen.height - 44f, 360f, 28f), "R to Restart   Esc to Pause", Centered(hudStyle));
+            if (hudLevel != null && hudLevel.IsTutorial)
+            {
+                GUI.Label(new Rect(24f, 54f, 680f, 30f), "WASD move  |  Arrows burst/roll  |  Portals change speed, gravity, and size", hudStyle);
+            }
+
+            if (!string.IsNullOrEmpty(portalEffectLabel) && Time.time < portalEffectUntil)
+            {
+                GUI.Label(new Rect(Screen.width * 0.5f - 190f, 58f, 380f, 34f), portalEffectLabel, Centered(hudStyle));
+            }
+
+            GUI.Label(new Rect(Screen.width * 0.5f - 230f, Screen.height - 44f, 460f, 28f), "R Restart   Esc Pause   Arrow Keys Burst / Snap Roll", Centered(hudStyle));
         }
 
         private void DrawPauseMenu()
@@ -233,6 +275,48 @@ namespace Drift
             GUI.Label(new Rect(0f, Screen.height * 0.5f - 40f, Screen.width, 80f), failureReason, titleStyle);
         }
 
+        private void DrawSettings()
+        {
+            DrawMenuBackdrop();
+            Rect panel = CenteredPanel(520f, 490f);
+            DrawPanel(panel, new Color(0.006f, 0.01f, 0.02f, 0.86f));
+            GUILayout.BeginArea(Inset(panel, 28f));
+            GUILayout.Label("Settings", titleStyle);
+            GUILayout.Space(16f);
+
+            GUILayout.Label($"Master Volume  {Mathf.RoundToInt(masterVolume * 100f)}%", hudStyle);
+            masterVolume = GUILayout.HorizontalSlider(masterVolume, 0f, 1f, GUILayout.Height(28f));
+            GameManager.Instance.SetMasterVolume(masterVolume);
+
+            GUILayout.Space(8f);
+            GUILayout.Label($"Effects Volume  {Mathf.RoundToInt(effectsVolume * 100f)}%", hudStyle);
+            effectsVolume = GUILayout.HorizontalSlider(effectsVolume, 0f, 1f, GUILayout.Height(28f));
+            GameManager.Instance.SetEffectsVolume(effectsVolume);
+
+            GUILayout.Space(8f);
+            GUILayout.Label($"Camera Smoothing  {cameraSmoothing:0.00}", hudStyle);
+            cameraSmoothing = GUILayout.HorizontalSlider(cameraSmoothing, 0.08f, 0.32f, GUILayout.Height(28f));
+            GameManager.Instance.SetCameraSmoothing(cameraSmoothing);
+
+            GUILayout.Space(8f);
+            GUILayout.Label($"Graphics Quality  {QualityLabel(graphicsQuality)}", hudStyle);
+            graphicsQuality = Mathf.RoundToInt(GUILayout.HorizontalSlider(graphicsQuality, 0f, 2f, GUILayout.Height(28f)));
+            QualitySettings.SetQualityLevel(Mathf.Clamp(graphicsQuality, 0, QualitySettings.names.Length - 1), true);
+
+            GUILayout.Space(18f);
+            if (DrawButton("Reset Progress"))
+            {
+                GameManager.Instance.Progression.ResetProgress();
+            }
+
+            if (DrawButton("Back"))
+            {
+                GameManager.Instance.ShowMainMenu();
+            }
+
+            GUILayout.EndArea();
+        }
+
         private bool DrawButton(string label)
         {
             return GUILayout.Button(label, buttonStyle, GUILayout.Height(50f));
@@ -248,7 +332,7 @@ namespace Drift
             titleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 42,
+                fontSize = 46,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = RuntimeVisualFactory.CurrentRingColor }
             };
@@ -325,11 +409,59 @@ namespace Drift
 
         private void DrawPanel(Rect rect)
         {
+            DrawPanel(rect, new Color(0.01f, 0.012f, 0.022f, 0.94f));
+        }
+
+        private void DrawPanel(Rect rect, Color color)
+        {
             DrawFullscreenTint(new Color(0f, 0f, 0f, 0.36f));
             Color previous = GUI.color;
-            GUI.color = new Color(0.01f, 0.012f, 0.022f, 0.94f);
+            GUI.color = color;
             GUI.Box(rect, GUIContent.none, panelStyle);
             GUI.color = previous;
+        }
+
+        private void DrawMenuBackdrop()
+        {
+            Color previous = GUI.color;
+            GUI.color = new Color(0.01f, 0.025f, 0.05f, 1f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = previous;
+
+            float centerX = Screen.width * 0.52f;
+            for (int i = 0; i < 10; i++)
+            {
+                float pulse = Mathf.Sin(Time.realtimeSinceStartup * 0.7f + i * 0.55f) * 8f;
+                float size = 80f + i * 58f + pulse;
+                float y = Screen.height * 0.48f + Mathf.Sin(Time.realtimeSinceStartup * 0.25f) * 16f;
+                Rect ring = new Rect(centerX - size * 0.5f, y - size * 0.5f, size, size);
+                Color color = Color.Lerp(new Color(0.1f, 0.9f, 1f, 0.08f), new Color(1f, 0.18f, 0.62f, 0.12f), i / 9f);
+                DrawOutlineRect(ring, color, 2f);
+            }
+        }
+
+        private static void DrawOutlineRect(Rect rect, Color color, float thickness)
+        {
+            Color previous = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(new Rect(rect.xMin, rect.yMin, rect.width, thickness), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.xMin, rect.yMax - thickness, rect.width, thickness), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.xMin, rect.yMin, thickness, rect.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.xMax - thickness, rect.yMin, thickness, rect.height), Texture2D.whiteTexture);
+            GUI.color = previous;
+        }
+
+        private static string QualityLabel(int quality)
+        {
+            switch (quality)
+            {
+                case 0:
+                    return "Low";
+                case 2:
+                    return "High";
+                default:
+                    return "Medium";
+            }
         }
 
         private static void DrawFullscreenTint(Color color)

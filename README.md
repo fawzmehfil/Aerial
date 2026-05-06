@@ -1,6 +1,10 @@
 # Aerial
 
-Aerial is a Unity 3D FPV drone racing vertical slice. The drone moves forward automatically at fixed speed while the player controls horizontal and vertical positioning to pass through neon checkpoint rings in order.
+<div align="center">
+  <img src="Assets/Logos/aerial.png" alt="cfr_poker_logo" width="220" />
+</div>
+
+Aerial is a Unity 3D space-arcade drone racing game. The drone moves forward automatically at fixed authored speed while the player controls horizontal and vertical positioning, burst movement, and stylish snap rolls to pass through neon checkpoint rings, portals, and readable obstacle sections.
 
 ## Unity Version
 
@@ -13,7 +17,7 @@ Built for Unity `6000.0.74f1`.
 3. Open with Unity `6000.0.74f1`.
 4. Open `Assets/Scenes/Main.unity`.
 
-The project includes committed starter prefabs under `Assets/Prefabs`. The editor bootstrap script can also rebuild generated scene/prefab assets from the `Drift/Rebuild Generated Scene And Prefabs` menu if needed.
+The project includes committed starter prefabs under `Assets/Prefabs`. The editor bootstrap script can also rebuild generated scene/prefab assets from the `Aerial/Rebuild Generated Scene And Prefabs` menu if needed.
 
 You can also press Play from an empty Unity scene; the runtime bootstrap creates the game manager automatically before the scene loads.
 
@@ -31,7 +35,7 @@ The project also includes a package-free Unity editor verifier that checks requi
   -quit
 ```
 
-The same verifier is available from `Drift/Run Project Verifier` inside the Unity editor.
+The same verifier is available from `Aerial/Run Project Verifier` inside the Unity editor.
 
 ## GitHub Notes
 
@@ -45,18 +49,24 @@ git status --short
 
 ## How to Play
 
-- Use the main menu to start the first unlocked level or open level select.
+- Use the main menu to play, start the tutorial, open level select, or adjust settings.
+- All levels are accessible from level select without needing to beat previous courses.
 - Fly through the highlighted current ring.
 - Rings must be passed in order.
+- Portals can temporarily change authored speed, gravity/orientation, or drone size.
 - Missing the current ring, hitting an obstacle, or leaving the playable boundary quickly resets the level.
-- Completing a level unlocks the next level.
+- Completing a level marks it complete locally.
 
 ## Controls
 
-- `W` / Up Arrow: move up
-- `S` / Down Arrow: move down
-- `A` / Left Arrow: move left
-- `D` / Right Arrow: move right
+- `W`: move up
+- `S`: move down
+- `A`: move left
+- `D`: move right
+- `Left Arrow`: snap roll left with a short lateral burst
+- `Right Arrow`: snap roll right with a short lateral burst
+- `Up Arrow`: quick rise burst
+- `Down Arrow`: quick dive burst
 - `R`: restart current level
 - `Esc`: pause, resume, or return from level select
 
@@ -64,13 +74,15 @@ There is no throttle, braking, or manual forward movement. Forward speed is fixe
 
 ## Levels
 
-The project includes five handcrafted routes:
+The project includes an expanded accessible level set:
 
-1. Basic Flow: large rings, gentle movement, no obstacles.
-2. Signal Wave: alternating horizontal and vertical ring patterns.
-3. Rhythm Arc: smoother rhythm-game arcs and center-to-edge transitions.
-4. Gate Run: obstacle walls and pillars around readable ring gates.
-5. Precision Neon: tighter rings, faster fixed speed, and more demanding control.
+1. Tutorial - Launch Sequence: safe onboarding for movement, ring order, arrows, portals, restart, and pause.
+2. Lightline Atrium: minimal white-light tunnel inspired by architectural corridor references.
+3. Cyan Velocity Hall: cyan/magenta sci-fi corridor with speed portals.
+4. Red Gate Foundry: industrial red rectangular gate course with wall and pillar hazards.
+5. Cosmic Ring Void: open starfield ring tunnel with alien silhouettes and debris.
+6. Sideways Spiral: sparse orientation portal set piece.
+7. Aerial Expedition: longer mixed adventure course with corridor, void, portal chain, gravity flip, and final challenge.
 
 ## Adding Levels
 
@@ -81,24 +93,27 @@ Each level defines:
 - Level number and display text
 - Fixed forward speed
 - Playable horizontal and vertical boundary
+- Environment theme
 - Ordered `RingSpec` positions and radii
 - Optional `ObstacleSpec` positions and sizes
+- Optional `PortalSpec` positions, types, radii, and durations
 
-The runtime managers generate the ring meshes, triggers, obstacle geometry, guide rails, particles, drone, camera target, and UI from that data.
+The runtime managers generate the ring meshes, pass triggers, portal geometry, obstacle geometry, guide rails, theme environments, particles, drone, camera target, and UI from that data.
 
 ## Architecture
 
-- `DroneController`: fixed forward movement, lateral input, smoothing, damping, boundary checks, and visual tilt.
-- `CameraFollow`: smooth chase camera and subtle FOV response to lateral motion.
+- `DroneController`: fixed forward movement, WASD positioning, arrow burst abilities, portal-applied speed/orientation/size effects, smoothing, damping, boundary checks, hitbox scaling, and visual tilt.
+- `CameraFollow`: smooth chase camera, orientation roll following, and subtle FOV response to lateral and portal speed changes.
 - `RingCheckpoint`: individual ring trigger and visual state.
 - `RingManager`: ordered checkpoint progression, miss detection, and ring progress.
 - `LevelManager`: builds and resets levels from `LevelDefinition` data.
 - `GameManager`: game state, pause/restart/failure/completion, audio feedback, and progression.
-- `UIManager`: package-free runtime main menu, level select, HUD, pause, failure, and completion panels.
-- `LevelSelectManager`: locked/completed level button state.
+- `PortalBase`, `SpeedPortal`, `GravityPortal`, `SizePortal`, `PortalManager`: reusable authored portal system.
+- `UIManager`: package-free runtime main menu, tutorial entry, level select, settings, HUD portal indicators, pause, failure, and completion panels.
+- `LevelSelectManager`: all-level selection and completed/tutorial button state.
 - `BoundaryReset`: playable volume failure detection.
 - `ObstacleReset`: obstacle collision/failure detection.
-- `RuntimeVisualFactory`: primitive drone, neon ring, obstacle, guide rail, particles, materials, and procedural audio helpers.
+- `RuntimeVisualFactory`: upgraded drone, neon rings, portal visuals, obstacle variants, theme environments, guide rails, particles, materials, and procedural audio helpers.
 - `DriftProjectBootstrapper`: editor-only scene, build settings, and prefab generation.
 
-Progress is saved locally with `PlayerPrefs` keys `Drift.HighestUnlockedLevel` and `Drift.CompletedLevels`.
+Progress is saved locally with `PlayerPrefs` keys `Drift.HighestUnlockedLevel` and `Drift.CompletedLevels`; all levels remain selectable regardless of completion.

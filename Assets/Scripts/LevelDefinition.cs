@@ -3,6 +3,35 @@ using UnityEngine;
 
 namespace Drift
 {
+    public enum EnvironmentTheme
+    {
+        MinimalLightTunnel,
+        NeonCyanCorridor,
+        RedGateIndustrial,
+        CosmicRingVoid,
+        MixedAdventure
+    }
+
+    public enum PortalKind
+    {
+        SpeedFast,
+        SpeedSlow,
+        SpeedNormal,
+        GravityInverted,
+        GravityNormal,
+        GravitySideways,
+        SizeSmall,
+        SizeNormal,
+        SizeLarge
+    }
+
+    public enum ObstacleKind
+    {
+        WallPanel,
+        Pillar,
+        CosmicDebris
+    }
+
     [Serializable]
     public sealed class LevelDefinition
     {
@@ -11,8 +40,11 @@ namespace Drift
         public string Description;
         public float ForwardSpeed;
         public Vector2 Boundary;
+        public EnvironmentTheme Theme;
+        public bool IsTutorial;
         public RingSpec[] Rings;
         public ObstacleSpec[] Obstacles;
+        public PortalSpec[] Portals;
 
         public LevelDefinition(
             int levelNumber,
@@ -20,16 +52,22 @@ namespace Drift
             string description,
             float forwardSpeed,
             Vector2 boundary,
+            EnvironmentTheme theme,
             RingSpec[] rings,
-            ObstacleSpec[] obstacles)
+            ObstacleSpec[] obstacles,
+            PortalSpec[] portals = null,
+            bool isTutorial = false)
         {
             LevelNumber = levelNumber;
             DisplayName = displayName;
             Description = description;
             ForwardSpeed = forwardSpeed;
             Boundary = boundary;
+            Theme = theme;
+            IsTutorial = isTutorial;
             Rings = rings;
             Obstacles = obstacles;
+            Portals = portals ?? Array.Empty<PortalSpec>();
         }
     }
 
@@ -51,11 +89,32 @@ namespace Drift
     {
         public Vector3 Position;
         public Vector3 Size;
+        public ObstacleKind Kind;
+        public float RotationZ;
 
-        public ObstacleSpec(Vector3 position, Vector3 size)
+        public ObstacleSpec(Vector3 position, Vector3 size, ObstacleKind kind = ObstacleKind.WallPanel, float rotationZ = 0f)
         {
             Position = position;
             Size = size;
+            Kind = kind;
+            RotationZ = rotationZ;
+        }
+    }
+
+    [Serializable]
+    public struct PortalSpec
+    {
+        public Vector3 Position;
+        public PortalKind Kind;
+        public float Radius;
+        public float Duration;
+
+        public PortalSpec(float x, float y, float z, PortalKind kind, float radius = 2.25f, float duration = 4f)
+        {
+            Position = new Vector3(x, y, z);
+            Kind = kind;
+            Radius = radius;
+            Duration = duration;
         }
     }
 }

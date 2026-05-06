@@ -10,12 +10,12 @@ namespace Drift
 
         public int GetHighestUnlockedLevel()
         {
-            return Mathf.Clamp(PlayerPrefs.GetInt(HighestUnlockedLevelKey, 1), 1, LevelCatalog.GetLevels().Count);
+            return LevelCatalog.GetLevels().Count;
         }
 
         public bool IsLevelUnlocked(int levelNumber)
         {
-            return levelNumber <= GetHighestUnlockedLevel();
+            return levelNumber >= 1 && levelNumber <= LevelCatalog.GetLevels().Count;
         }
 
         public bool IsLevelCompleted(int levelNumber)
@@ -33,12 +33,6 @@ namespace Drift
             {
                 completed += token;
                 PlayerPrefs.SetString(CompletedLevelsKey, completed);
-            }
-
-            int nextUnlocked = Mathf.Min(clampedLevel + 1, LevelCatalog.GetLevels().Count);
-            if (nextUnlocked > GetHighestUnlockedLevel())
-            {
-                PlayerPrefs.SetInt(HighestUnlockedLevelKey, nextUnlocked);
             }
 
             PlayerPrefs.Save();

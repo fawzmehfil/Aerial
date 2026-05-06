@@ -75,8 +75,9 @@ namespace Drift
             }
 
             RingCheckpoint currentRing = rings[currentRingIndex];
-            if (drone.transform.position.z > currentRing.ZPosition + missThreshold)
+            if (currentRing.IsPastMissPlane(drone.transform.position, missThreshold))
             {
+                currentRing.PlayMissEffect();
                 GameManager.Instance.FailCurrentLevel("Missed Ring");
             }
         }

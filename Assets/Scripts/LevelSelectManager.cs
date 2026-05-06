@@ -33,7 +33,7 @@ namespace Drift
             {
                 bool unlocked = progression.IsLevelUnlocked(level.LevelNumber);
                 bool completed = progression.IsLevelCompleted(level.LevelNumber);
-                string suffix = completed ? "  Completed" : unlocked ? string.Empty : "  Locked";
+                string suffix = completed ? "  Completed" : level.IsTutorial ? "  Tutorial" : string.Empty;
                 entries.Add(new LevelSelectEntry(level.LevelNumber, $"{level.LevelNumber}. {level.DisplayName}{suffix}", unlocked, completed));
             }
 
