@@ -22,6 +22,7 @@ required_files=(
   "Assets/Scripts/BoundaryReset.cs"
   "Assets/Scripts/ObstacleReset.cs"
   "Assets/Scripts/LevelCatalog.cs"
+  "Assets/Scripts/PracticeCheckpoint.cs"
   "Assets/Scripts/ProgressionService.cs"
   "Assets/Prefabs/Drone.prefab"
   "Assets/Prefabs/Ring.prefab"
@@ -62,6 +63,8 @@ grep -q "#if UNITY_INCLUDE_TESTS && DRIFT_ENABLE_UNITY_TESTS" Assets/Tests/EditM
 grep -q "#if UNITY_INCLUDE_TESTS && DRIFT_ENABLE_UNITY_TESTS" Assets/Tests/PlayMode/DriftRuntimeFlowTests.cs
 grep -q "DroneHitboxSize" Assets/Scripts/RuntimeVisualFactory.cs
 grep -q "\"Hitbox Core\"" Assets/Scripts/RuntimeVisualFactory.cs
+grep -q "StartPracticeLevel" Assets/Scripts/GameManager.cs
+grep -q "Completed in Practice Mode" Assets/Scripts/UIManager.cs
 grep -q "6000.0.74f1" ProjectSettings/ProjectVersion.txt
 
 level_count="$(grep -c "new LevelDefinition(" Assets/Scripts/LevelCatalog.cs)"

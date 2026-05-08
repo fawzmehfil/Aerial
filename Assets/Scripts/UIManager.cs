@@ -12,6 +12,7 @@ namespace Drift
             Hud,
             Pause,
             Complete,
+            PracticeComplete,
             Failure,
             Settings
         }
@@ -20,8 +21,10 @@ namespace Drift
         private IReadOnlyList<LevelDefinition> levelSelectLevels;
         private ProgressionService levelSelectProgression;
         private LevelDefinition hudLevel;
+        private bool hudPracticeMode;
         private int hudCurrentRing = 1;
         private int hudTotalRings;
+        private int practiceCheckpointNumber;
         private string failureReason = "Missed Ring";
         private int completeLevelNumber;
         private bool completeHasNextLevel;
@@ -58,7 +61,13 @@ namespace Drift
 
         public void ShowHud(LevelDefinition level)
         {
+            ShowHud(level, false);
+        }
+
+        public void ShowHud(LevelDefinition level, bool isPracticeMode)
+        {
             hudLevel = level;
+            hudPracticeMode = isPracticeMode;
             SetView(View.Hud);
         }
 
@@ -80,6 +89,13 @@ namespace Drift
             SetView(View.Complete);
         }
 
+        public void ShowPracticeComplete(int levelNumber)
+        {
+            completeLevelNumber = levelNumber;
+            completeHasNextLevel = false;
+            SetView(View.PracticeComplete);
+        }
+
         public void ShowFailure(string reason)
         {
             failureReason = string.IsNullOrWhiteSpace(reason) ? "Missed Ring" : reason;
@@ -95,6 +111,11 @@ namespace Drift
         {
             portalEffectLabel = label;
             portalEffectUntil = Time.time + Mathf.Max(duration, 1.2f);
+        }
+
+        public void UpdatePracticeCheckpoint(int checkpointNumber)
+        {
+            practiceCheckpointNumber = Mathf.Max(0, checkpointNumber);
         }
 
         private void OnGUI()
@@ -117,6 +138,9 @@ namespace Drift
                     break;
                 case View.Complete:
                     DrawCompleteMenu();
+                    break;
+                case View.PracticeComplete:
+                    DrawPracticeCompleteMenu();
                     break;
                 case View.Failure:
                     DrawFailure();
@@ -185,11 +209,19 @@ namespace Drift
             {
                 GUIStyle style = entry.Completed ? completedButtonStyle : entry.Unlocked ? buttonStyle : disabledButtonStyle;
                 GUI.enabled = entry.Unlocked;
-                if (GUILayout.Button(entry.Label, style, GUILayout.Height(48f)))
+                GUILayout.BeginHorizontal(GUILayout.Height(48f));
+                GUILayout.Label(entry.Label, hudStyle, GUILayout.Width(320f), GUILayout.Height(48f));
+                if (GUILayout.Button("Play", style, GUILayout.Height(48f)))
                 {
                     GameManager.Instance.StartLevel(entry.LevelNumber);
                 }
 
+                if (GUILayout.Button("Practice", style, GUILayout.Height(48f)))
+                {
+                    GameManager.Instance.StartPracticeLevel(entry.LevelNumber);
+                }
+
+                GUILayout.EndHorizontal();
                 GUI.enabled = true;
             }
 
@@ -206,9 +238,14 @@ namespace Drift
         {
             GUI.Label(new Rect(24f, 18f, 420f, 34f), hudLevel != null ? hudLevel.DisplayName : "Level", hudStyle);
             GUI.Label(new Rect(Screen.width - 220f, 18f, 196f, 34f), $"{hudCurrentRing} / {hudTotalRings}", RightAligned(hudStyle));
+            if (hudPracticeMode)
+            {
+                GUI.Label(new Rect(24f, 54f, 420f, 30f), $"Practice Mode  CP {practiceCheckpointNumber}", hudStyle);
+            }
             if (hudLevel != null && hudLevel.IsTutorial)
             {
-                GUI.Label(new Rect(24f, 54f, 680f, 30f), "WASD move  |  Portals change speed, gravity, and size", hudStyle);
+                float y = hudPracticeMode ? 84f : 54f;
+                GUI.Label(new Rect(24f, y, 680f, 30f), "WASD move  |  Portals change speed, gravity, and size", hudStyle);
             }
 
             if (!string.IsNullOrEmpty(portalEffectLabel) && Time.time < portalEffectUntil)
@@ -234,6 +271,38 @@ namespace Drift
             if (DrawButton("Restart Level"))
             {
                 GameManager.Instance.RestartCurrentLevel();
+            }
+
+            if (DrawButton("Level Select"))
+            {
+                GameManager.Instance.ShowLevelSelect();
+            }
+
+            if (DrawButton("Main Menu"))
+            {
+                GameManager.Instance.ShowMainMenu();
+            }
+
+            GUILayout.EndArea();
+        }
+
+        private void DrawPracticeCompleteMenu()
+        {
+            Rect panel = CenteredPanel(500f, 380f);
+            DrawPanel(panel);
+            GUILayout.BeginArea(Inset(panel, 28f));
+            GUILayout.Label("Practice Complete", titleStyle);
+            GUILayout.Label($"Completed in Practice Mode  |  Level {completeLevelNumber} learned", subtitleStyle);
+            GUILayout.Space(22f);
+
+            if (DrawButton("Practice Again"))
+            {
+                GameManager.Instance.StartPracticeLevel(completeLevelNumber);
+            }
+
+            if (DrawButton("Play Normal"))
+            {
+                GameManager.Instance.StartLevel(completeLevelNumber);
             }
 
             if (DrawButton("Level Select"))

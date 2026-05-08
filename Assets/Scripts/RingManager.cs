@@ -12,6 +12,7 @@ namespace Drift
         private int currentRingIndex;
         private bool complete;
 
+        public int CurrentRingIndex => currentRingIndex;
         public int CurrentRingNumber => Mathf.Min(currentRingIndex + 1, rings.Count);
         public int TotalRings => rings.Count;
 
@@ -48,8 +49,30 @@ namespace Drift
                 return;
             }
 
+            GameManager.Instance.RecordPracticeCheckpoint(ring, currentRingIndex);
             rings[currentRingIndex].SetState(RingVisualState.Current);
             GameManager.Instance.UpdateHudProgress();
+        }
+
+        public void SetCurrentRingIndex(int ringIndex)
+        {
+            currentRingIndex = Mathf.Clamp(ringIndex, 0, rings.Count);
+            complete = currentRingIndex >= rings.Count;
+            for (int i = 0; i < rings.Count; i++)
+            {
+                if (i < currentRingIndex)
+                {
+                    rings[i].SetState(RingVisualState.Completed);
+                }
+                else if (i == currentRingIndex)
+                {
+                    rings[i].SetState(RingVisualState.Current);
+                }
+                else
+                {
+                    rings[i].SetState(RingVisualState.Future);
+                }
+            }
         }
 
         public void ResetRings()

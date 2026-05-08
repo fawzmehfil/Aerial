@@ -51,11 +51,14 @@ git status --short
 
 - Use the main menu to play, start the tutorial, open level select, or adjust settings.
 - All levels are accessible from level select without needing to beat previous courses.
+- Each level select row has `Play` and `Practice` options.
+- Practice mode places automatic checkpoints as you clear rings, respawns you at the latest checkpoint after a crash, and does not count as a normal completion.
 - Fly through the highlighted current ring.
 - Rings must be passed in order.
 - Portals can temporarily change authored speed, gravity/orientation, or drone size.
 - Missing the current ring, hitting an obstacle, or leaving the playable boundary quickly resets the level.
 - Completing a level marks it complete locally.
+- Completing a level in practice mode shows a practice completion screen and leaves normal completion progress unchanged.
 
 ## Controls
 
@@ -95,17 +98,18 @@ Each level defines:
 - Optional `ObstacleSpec` positions and sizes
 - Optional `PortalSpec` positions, types, radii, and durations
 - Optional soundtrack path, soundtrack duration, and per-level gameplay SFX suppression
+- Practice checkpoints are generated automatically from ring progress; use normal mode for saved completions.
 
 The runtime managers generate the ring meshes, pass triggers, portal geometry, obstacle geometry, guide rails, theme environments, particles, drone, camera target, and UI from that data.
 
 ## Architecture
 
-- `DroneController`: fixed forward movement, WASD positioning, portal-applied speed/orientation/size effects, smoothing, damping, boundary checks, hitbox scaling, and visual tilt.
+- `DroneController`: fixed forward movement, WASD positioning, portal-applied speed/orientation/size effects, practice snapshots, smoothing, damping, boundary checks, hitbox scaling, and visual tilt.
 - `CameraFollow`: smooth chase camera, orientation roll following, and subtle FOV response to lateral and portal speed changes.
 - `RingCheckpoint`: individual ring trigger and visual state.
 - `RingManager`: ordered checkpoint progression, miss detection, and ring progress.
 - `LevelManager`: builds and resets levels from `LevelDefinition` data.
-- `GameManager`: game state, pause/restart/failure/completion, soundtrack playback, audio feedback, and progression.
+- `GameManager`: game state, normal/practice starts, checkpoint respawns, pause/restart/failure/completion, soundtrack playback, audio feedback, and progression.
 - `PortalBase`, `SpeedPortal`, `GravityPortal`, `SizePortal`, `PortalManager`: reusable authored portal system.
 - `UIManager`: package-free runtime main menu, tutorial entry, level select, settings, HUD portal indicators, pause, failure, and completion panels.
 - `LevelSelectManager`: all-level selection and completed/tutorial button state.

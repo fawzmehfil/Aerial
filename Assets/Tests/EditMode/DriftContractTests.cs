@@ -29,7 +29,9 @@ public sealed class DriftContractTests
             "Drift.SpeedPortal",
             "Drift.GravityPortal",
             "Drift.SizePortal",
-            "Drift.PortalManager"
+            "Drift.PortalManager",
+            "Drift.PracticeCheckpoint",
+            "Drift.DronePracticeSnapshot"
         };
 
         foreach (string typeName in requiredTypes)
@@ -220,6 +222,68 @@ public sealed class DriftContractTests
     }
 
     [Test]
+    public void PracticeModeContractsExistForCheckpointRespawns()
+    {
+        Type gameManager = RequireType("Drift.GameManager");
+        Type droneController = RequireType("Drift.DroneController");
+        Type ringManager = RequireType("Drift.RingManager");
+        Type portalBase = RequireType("Drift.PortalBase");
+        Type runtimeVisualFactory = RequireType("Drift.RuntimeVisualFactory");
+
+        Assert.That(gameManager.GetMethod("StartPracticeLevel", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+        Assert.That(gameManager.GetProperty("IsPracticeMode", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+        Assert.That(gameManager.GetMethod("RecordPracticeCheckpoint", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+        Assert.That(gameManager.GetMethod("SyncPracticeSoundtrack", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+
+        Assert.That(droneController.GetMethod("CapturePracticeSnapshot", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+        Assert.That(droneController.GetMethod("RestorePracticeSnapshot", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+        Assert.That(ringManager.GetMethod("SetCurrentRingIndex", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+        Assert.That(portalBase.GetMethod("ResetForPracticeRespawn", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+        Assert.That(runtimeVisualFactory.GetMethod("CreatePracticeCheckpointMarker", BindingFlags.Public | BindingFlags.Static), Is.Not.Null);
+    }
+
+    [Test]
+    public void PracticeModeUiHasPracticeButtonsAndSeparateCompletionCopy()
+    {
+        string uiPath = Path.Combine(Directory.GetCurrentDirectory(), "Assets/Scripts/UIManager.cs");
+        string uiSource = File.ReadAllText(uiPath);
+
+        Assert.That(uiSource, Does.Contain("Practice"));
+        Assert.That(uiSource, Does.Contain("StartPracticeLevel"));
+        Assert.That(uiSource, Does.Contain("Completed in Practice Mode"));
+    }
+
+    [Test]
+    public void EveryLevelHasPracticalPracticeCheckpointCadence()
+    {
+        Type planner = RequireType("Drift.PracticeCheckpointPlanner");
+        MethodInfo countMethod = planner.GetMethod("CountAutoCheckpoints", BindingFlags.Public | BindingFlags.Static);
+        Assert.That(countMethod, Is.Not.Null);
+
+        foreach (LevelDefinition level in LevelCatalog.GetLevels())
+        {
+            int count = (int)countMethod.Invoke(null, new object[] { level });
+            int expectedMinimum = Mathf.Max(4, Mathf.CeilToInt(level.Rings.Length * 0.65f));
+            Assert.That(count, Is.GreaterThanOrEqualTo(expectedMinimum), $"{level.DisplayName} should have frequent practice checkpoints.");
+        }
+    }
+
+    [Test]
+    public void PracticeModeCompletionDoesNotMarkProgressionComplete()
+    {
+        PlayerPrefs.DeleteKey(ProgressionService.HighestUnlockedLevelKey);
+        PlayerPrefs.DeleteKey(ProgressionService.CompletedLevelsKey);
+
+        ClearScene();
+        GameManager manager = GameManager.EnsureRuntime();
+        manager.StartPracticeLevel(1);
+        manager.CompleteCurrentLevel();
+
+        Assert.That(manager.IsPracticeMode, Is.True);
+        Assert.That(manager.Progression.IsLevelCompleted(1), Is.False);
+    }
+
+    [Test]
     public void ProgressionServiceUnlocksAndPersistsLevels()
     {
         PlayerPrefs.DeleteKey("Drift.HighestUnlockedLevel");
@@ -277,6 +341,14 @@ public sealed class DriftContractTests
         MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance);
         Assert.That(method, Is.Not.Null, $"{target.GetType().Name}.{methodName} should be public.");
         return method.Invoke(target, args);
+    }
+
+    private static void ClearScene()
+    {
+        foreach (GameObject gameObject in UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
+        {
+            UnityEngine.Object.DestroyImmediate(gameObject);
+        }
     }
 }
 #endif

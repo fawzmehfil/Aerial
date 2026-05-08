@@ -31,6 +31,10 @@ namespace Drift
         private Coroutine speedRoutine;
         private Coroutine sizeRoutine;
         private Coroutine orientationRoutine;
+        private bool timedSpeedReturnActive;
+        private float timedSpeedReturnAt;
+        private bool timedSizeReturnActive;
+        private float timedSizeReturnAt;
 
         public float ForwardSpeed => currentForwardSpeed;
         public float DefaultForwardSpeed => defaultForwardSpeed;
@@ -65,6 +69,8 @@ namespace Drift
             sizeMultiplier = 1f;
             orientationRoll = 0f;
             targetOrientationRoll = 0f;
+            timedSpeedReturnActive = false;
+            timedSizeReturnActive = false;
             UpdateHitboxScale();
             if (visualRoot != null)
             {
@@ -106,6 +112,71 @@ namespace Drift
 
             sizeRoutine = StartCoroutine(SizeRoutine(multiplier, duration));
             GameManager.Instance?.ShowPortalEffect(hudLabel, duration);
+        }
+
+        public DronePracticeSnapshot CapturePracticeSnapshot()
+        {
+            return new DronePracticeSnapshot
+            {
+                Position = transform.position,
+                Rotation = transform.rotation,
+                ForwardSpeed = currentForwardSpeed,
+                OrientationRoll = orientationRoll,
+                TargetOrientationRoll = targetOrientationRoll,
+                SizeMultiplier = sizeMultiplier,
+                HasTimedSpeedReturn = timedSpeedReturnActive,
+                SpeedReturnSeconds = timedSpeedReturnActive ? Mathf.Max(0f, timedSpeedReturnAt - Time.time) : 0f,
+                HasTimedSizeReturn = timedSizeReturnActive,
+                SizeReturnSeconds = timedSizeReturnActive ? Mathf.Max(0f, timedSizeReturnAt - Time.time) : 0f
+            };
+        }
+
+        public void RestorePracticeSnapshot(DronePracticeSnapshot snapshot)
+        {
+            if (speedRoutine != null)
+            {
+                StopCoroutine(speedRoutine);
+                speedRoutine = null;
+            }
+
+            if (sizeRoutine != null)
+            {
+                StopCoroutine(sizeRoutine);
+                sizeRoutine = null;
+            }
+
+            if (orientationRoutine != null)
+            {
+                StopCoroutine(orientationRoutine);
+                orientationRoutine = null;
+            }
+
+            transform.SetPositionAndRotation(snapshot.Position, snapshot.Rotation);
+            lateralVelocity = Vector2.zero;
+            currentForwardSpeed = snapshot.ForwardSpeed > 0.01f ? snapshot.ForwardSpeed : defaultForwardSpeed;
+            orientationRoll = snapshot.OrientationRoll;
+            targetOrientationRoll = snapshot.TargetOrientationRoll;
+            sizeMultiplier = Mathf.Max(0.1f, snapshot.SizeMultiplier);
+            UpdateHitboxScale();
+            if (visualRoot != null)
+            {
+                visualRoot.localScale = Vector3.one * sizeMultiplier;
+                visualRoot.localRotation = Quaternion.Euler(0f, 0f, orientationRoll);
+            }
+
+            timedSpeedReturnActive = snapshot.HasTimedSpeedReturn && snapshot.SpeedReturnSeconds > 0f;
+            if (timedSpeedReturnActive)
+            {
+                timedSpeedReturnAt = Time.time + snapshot.SpeedReturnSeconds;
+                speedRoutine = StartCoroutine(ReturnSpeedAfter(snapshot.SpeedReturnSeconds));
+            }
+
+            timedSizeReturnActive = snapshot.HasTimedSizeReturn && snapshot.SizeReturnSeconds > 0f;
+            if (timedSizeReturnActive)
+            {
+                timedSizeReturnAt = Time.time + snapshot.SizeReturnSeconds;
+                sizeRoutine = StartCoroutine(ReturnSizeAfter(snapshot.SizeReturnSeconds));
+            }
         }
 
         private void Awake()
@@ -210,6 +281,8 @@ namespace Drift
         {
             float targetSpeed = defaultForwardSpeed * multiplier;
             float startSpeed = currentForwardSpeed;
+            timedSpeedReturnActive = duration > 0f;
+            timedSpeedReturnAt = timedSpeedReturnActive ? Time.time + 0.35f + duration : 0f;
             for (float t = 0f; t < 0.35f; t += Time.deltaTime)
             {
                 currentForwardSpeed = Mathf.Lerp(startSpeed, targetSpeed, t / 0.35f);
@@ -219,6 +292,7 @@ namespace Drift
             currentForwardSpeed = targetSpeed;
             if (duration > 0f)
             {
+                timedSpeedReturnAt = Time.time + duration;
                 yield return new WaitForSeconds(duration);
                 startSpeed = currentForwardSpeed;
                 for (float t = 0f; t < 0.4f; t += Time.deltaTime)
@@ -229,6 +303,22 @@ namespace Drift
             }
 
             currentForwardSpeed = defaultForwardSpeed;
+            timedSpeedReturnActive = false;
+            speedRoutine = null;
+        }
+
+        private IEnumerator ReturnSpeedAfter(float delay)
+        {
+            yield return new WaitForSeconds(Mathf.Max(0f, delay));
+            float startSpeed = currentForwardSpeed;
+            for (float t = 0f; t < 0.4f; t += Time.deltaTime)
+            {
+                currentForwardSpeed = Mathf.Lerp(startSpeed, defaultForwardSpeed, t / 0.4f);
+                yield return null;
+            }
+
+            currentForwardSpeed = defaultForwardSpeed;
+            timedSpeedReturnActive = false;
             speedRoutine = null;
         }
 
@@ -253,6 +343,8 @@ namespace Drift
         private IEnumerator SizeRoutine(float multiplier, float duration)
         {
             float startSize = sizeMultiplier;
+            timedSizeReturnActive = duration > 0f;
+            timedSizeReturnAt = timedSizeReturnActive ? Time.time + 0.25f + duration : 0f;
             for (float t = 0f; t < 0.25f; t += Time.deltaTime)
             {
                 sizeMultiplier = Mathf.Lerp(startSize, multiplier, t / 0.25f);
@@ -264,6 +356,7 @@ namespace Drift
             UpdateHitboxScale();
             if (duration > 0f)
             {
+                timedSizeReturnAt = Time.time + duration;
                 yield return new WaitForSeconds(duration);
                 startSize = sizeMultiplier;
                 for (float t = 0f; t < 0.25f; t += Time.deltaTime)
@@ -276,6 +369,24 @@ namespace Drift
 
             sizeMultiplier = 1f;
             UpdateHitboxScale();
+            timedSizeReturnActive = false;
+            sizeRoutine = null;
+        }
+
+        private IEnumerator ReturnSizeAfter(float delay)
+        {
+            yield return new WaitForSeconds(Mathf.Max(0f, delay));
+            float startSize = sizeMultiplier;
+            for (float t = 0f; t < 0.25f; t += Time.deltaTime)
+            {
+                sizeMultiplier = Mathf.Lerp(startSize, 1f, t / 0.25f);
+                UpdateHitboxScale();
+                yield return null;
+            }
+
+            sizeMultiplier = 1f;
+            UpdateHitboxScale();
+            timedSizeReturnActive = false;
             sizeRoutine = null;
         }
 

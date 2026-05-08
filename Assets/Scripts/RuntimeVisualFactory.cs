@@ -210,6 +210,20 @@ namespace Drift
             return obstacle;
         }
 
+        public static GameObject CreatePracticeCheckpointMarker(Transform parent, Vector3 position, int checkpointNumber)
+        {
+            Material markerMaterial = CreateNeonMaterial($"Practice Checkpoint {checkpointNumber:00}", new Color(0.25f, 1f, 0.45f, 0.74f), 3.1f, true);
+            GameObject root = new GameObject($"Practice Checkpoint {checkpointNumber:00}");
+            root.transform.SetParent(parent, false);
+            root.transform.position = position + Vector3.up * 0.42f;
+
+            GameObject gem = AddPrimitive(root.transform, PrimitiveType.Cube, "Practice Checkpoint Gem", Vector3.zero, Vector3.one * 0.38f, markerMaterial);
+            gem.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            CreatePortalSegmentRing(root.transform, "Practice Checkpoint Halo", 0.58f, 18, 0.08f, 0.035f, 0.08f, 0f, 0f, markerMaterial);
+
+            return root;
+        }
+
         public static PortalBase CreatePortal(Transform parent, PortalSpec spec)
         {
             GameObject root = new GameObject($"{spec.Kind} Portal");

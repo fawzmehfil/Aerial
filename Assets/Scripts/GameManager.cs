@@ -15,6 +15,7 @@ namespace Drift
         Paused,
         Failed,
         LevelComplete,
+        PracticeComplete,
         Settings
     }
 
@@ -39,10 +40,17 @@ namespace Drift
         private float effectsVolume = 1f;
         private Coroutine failureRoutine;
         private Coroutine soundtrackRoutine;
+        private bool practiceMode;
+        private PracticeCheckpoint currentPracticeCheckpoint;
+        private int practiceCheckpointCount;
+        private float pendingSoundtrackStartTime;
+        private float soundtrackClockStartTime;
 
         public ProgressionService Progression => progression;
         public IReadOnlyList<LevelDefinition> Levels => levels;
         public bool IsPlaying => state == GameState.Playing;
+        public bool IsPracticeMode => practiceMode;
+        public PracticeCheckpoint CurrentPracticeCheckpoint => currentPracticeCheckpoint;
 
         public static GameManager EnsureRuntime()
         {
@@ -59,6 +67,7 @@ namespace Drift
         {
             state = GameState.MainMenu;
             Time.timeScale = 1f;
+            practiceMode = false;
             StopLevelSoundtrack();
             levelManager.ClearLevel();
             uiManager.ShowMainMenu();
@@ -68,6 +77,7 @@ namespace Drift
         {
             state = GameState.LevelSelect;
             Time.timeScale = 1f;
+            practiceMode = false;
             StopLevelSoundtrack();
             levelManager.ClearLevel();
             uiManager.ShowLevelSelect(levels, progression);
@@ -103,6 +113,16 @@ namespace Drift
 
         public void StartLevel(int levelNumber)
         {
+            StartLevel(levelNumber, false);
+        }
+
+        public void StartPracticeLevel(int levelNumber)
+        {
+            StartLevel(levelNumber, true);
+        }
+
+        private void StartLevel(int levelNumber, bool usePracticeMode)
+        {
             if (!progression.IsLevelUnlocked(levelNumber))
             {
                 return;
@@ -111,9 +131,11 @@ namespace Drift
             currentLevelNumber = Mathf.Clamp(levelNumber, 1, levels.Count);
             state = GameState.Playing;
             Time.timeScale = 1f;
+            practiceMode = usePracticeMode;
             LevelDefinition level = levels[currentLevelNumber - 1];
             levelManager.LoadLevel(level, ringManager, cameraFollow);
-            uiManager.ShowHud(level);
+            InitializePracticeCheckpoint();
+            uiManager.ShowHud(level, practiceMode);
             StartLevelSoundtrack(level);
             UpdateHudProgress();
         }
@@ -130,7 +152,8 @@ namespace Drift
             Time.timeScale = 1f;
             StopLevelSoundtrack();
             levelManager.ResetCurrentLevel(ringManager, cameraFollow);
-            uiManager.ShowHud(levels[currentLevelNumber - 1]);
+            InitializePracticeCheckpoint();
+            uiManager.ShowHud(levels[currentLevelNumber - 1], practiceMode);
             StartLevelSoundtrack(levels[currentLevelNumber - 1]);
             UpdateHudProgress();
         }
@@ -158,7 +181,7 @@ namespace Drift
             state = GameState.Playing;
             Time.timeScale = 1f;
             ResumeLevelSoundtrack();
-            uiManager.ShowHud(levels[currentLevelNumber - 1]);
+            uiManager.ShowHud(levels[currentLevelNumber - 1], practiceMode);
             UpdateHudProgress();
         }
 
@@ -175,6 +198,13 @@ namespace Drift
                 audioSource.PlayOneShot(failClip, 0.8f * effectsVolume);
             }
 
+            if (practiceMode)
+            {
+                uiManager.ShowFailure($"{reason} - practice checkpoint");
+                failureRoutine = StartCoroutine(ResetAfterPracticeFailure());
+                return;
+            }
+
             StopLevelSoundtrack();
             uiManager.ShowFailure(reason);
             failureRoutine = StartCoroutine(ResetAfterFailure());
@@ -184,6 +214,14 @@ namespace Drift
         {
             if (state != GameState.Playing)
             {
+                return;
+            }
+
+            if (practiceMode)
+            {
+                state = GameState.PracticeComplete;
+                StopLevelSoundtrack();
+                uiManager.ShowPracticeComplete(currentLevelNumber);
                 return;
             }
 
@@ -208,6 +246,46 @@ namespace Drift
             uiManager.UpdateHudProgress(ringManager.CurrentRingNumber, ringManager.TotalRings);
         }
 
+        public void RecordPracticeCheckpoint(RingCheckpoint passedRing, int nextRingIndex)
+        {
+            if (!practiceMode || passedRing == null || levelManager.CurrentDrone == null)
+            {
+                return;
+            }
+
+            LevelDefinition level = levels[currentLevelNumber - 1];
+            if (!PracticeCheckpointPlanner.ShouldCreateAutoCheckpoint(level, passedRing.RingIndex))
+            {
+                return;
+            }
+
+            DronePracticeSnapshot snapshot = levelManager.CurrentDrone.CapturePracticeSnapshot();
+            snapshot.Position = new Vector3(snapshot.Position.x, snapshot.Position.y, passedRing.ZPosition + 1.6f);
+            practiceCheckpointCount++;
+            currentPracticeCheckpoint = new PracticeCheckpoint(practiceCheckpointCount, nextRingIndex, GetCurrentSoundtrackTime(), snapshot);
+            levelManager.ShowPracticeCheckpointMarker(snapshot.Position, practiceCheckpointCount);
+            uiManager.UpdatePracticeCheckpoint(practiceCheckpointCount);
+        }
+
+        public void SyncPracticeSoundtrack(float checkpointTime)
+        {
+            pendingSoundtrackStartTime = Mathf.Max(0f, checkpointTime);
+            if (soundtrackSource == null || soundtrackSource.clip == null)
+            {
+                return;
+            }
+
+            float seekTime = Mathf.Clamp(pendingSoundtrackStartTime, 0f, Mathf.Max(0f, soundtrackSource.clip.length - 0.05f));
+            soundtrackSource.time = seekTime;
+            soundtrackClockStartTime = Time.time - seekTime;
+            if (!soundtrackSource.isPlaying)
+            {
+                soundtrackSource.Play();
+            }
+
+            pendingSoundtrackStartTime = 0f;
+        }
+
         public void ShowPortalEffect(string label, float duration)
         {
             uiManager.ShowPortalEffect(label, duration);
@@ -229,6 +307,7 @@ namespace Drift
         {
             state = GameState.Settings;
             Time.timeScale = 1f;
+            practiceMode = false;
             StopLevelSoundtrack();
             levelManager.ClearLevel();
             uiManager.ShowSettings();
@@ -278,6 +357,14 @@ namespace Drift
         private void Start()
         {
             ShowMainMenu();
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
         }
 
         private void Update()
@@ -367,6 +454,21 @@ namespace Drift
             completeClip = RuntimeVisualFactory.CreateToneClip("Level Complete", 660f, 0.55f, 0.55f);
         }
 
+        private void InitializePracticeCheckpoint()
+        {
+            practiceCheckpointCount = 0;
+            if (!practiceMode || levelManager.CurrentDrone == null)
+            {
+                currentPracticeCheckpoint = default;
+                uiManager.UpdatePracticeCheckpoint(0);
+                return;
+            }
+
+            DronePracticeSnapshot snapshot = levelManager.CurrentDrone.CapturePracticeSnapshot();
+            currentPracticeCheckpoint = new PracticeCheckpoint(0, 0, 0f, snapshot);
+            uiManager.UpdatePracticeCheckpoint(0);
+        }
+
         private bool CurrentLevelSuppressesGameplaySoundEffects()
         {
             if (levels == null || currentLevelNumber < 1 || currentLevelNumber > levels.Count)
@@ -380,6 +482,8 @@ namespace Drift
         private void StartLevelSoundtrack(LevelDefinition level)
         {
             StopLevelSoundtrack();
+            pendingSoundtrackStartTime = 0f;
+            soundtrackClockStartTime = Time.time;
             if (level == null || string.IsNullOrWhiteSpace(level.SoundtrackPath))
             {
                 return;
@@ -440,9 +544,12 @@ namespace Drift
                 }
 
                 AudioClip clip = DownloadHandlerAudioClip.GetContent(request);
+                float startTime = pendingSoundtrackStartTime > 0f ? pendingSoundtrackStartTime : Mathf.Max(0f, Time.time - soundtrackClockStartTime);
                 soundtrackSource.clip = clip;
-                soundtrackSource.time = 0f;
+                soundtrackSource.time = Mathf.Clamp(startTime, 0f, Mathf.Max(0f, clip.length - 0.05f));
+                soundtrackClockStartTime = Time.time - soundtrackSource.time;
                 soundtrackSource.Play();
+                pendingSoundtrackStartTime = 0f;
             }
 
             soundtrackRoutine = null;
@@ -459,6 +566,45 @@ namespace Drift
             yield return new WaitForSeconds(0.65f);
             RestartCurrentLevel();
             failureRoutine = null;
+        }
+
+        private IEnumerator ResetAfterPracticeFailure()
+        {
+            yield return new WaitForSeconds(0.45f);
+            RespawnAtPracticeCheckpoint();
+            failureRoutine = null;
+        }
+
+        private void RespawnAtPracticeCheckpoint()
+        {
+            if (!practiceMode || levelManager.CurrentDrone == null)
+            {
+                RestartCurrentLevel();
+                return;
+            }
+
+            state = GameState.Playing;
+            Time.timeScale = 1f;
+            levelManager.CurrentDrone.RestorePracticeSnapshot(currentPracticeCheckpoint.DroneSnapshot);
+            ringManager.SetCurrentRingIndex(currentPracticeCheckpoint.NextRingIndex);
+            ResetPortalsForPracticeRespawn(currentPracticeCheckpoint.Position.z);
+            SyncPracticeSoundtrack(currentPracticeCheckpoint.SoundtrackTime);
+            uiManager.ShowHud(levels[currentLevelNumber - 1], true);
+            uiManager.UpdatePracticeCheckpoint(currentPracticeCheckpoint.CheckpointNumber);
+            UpdateHudProgress();
+        }
+
+        private void ResetPortalsForPracticeRespawn(float checkpointZ)
+        {
+            foreach (PortalBase portal in UnityEngine.Object.FindObjectsByType<PortalBase>(FindObjectsSortMode.None))
+            {
+                portal.ResetForPracticeRespawn(checkpointZ);
+            }
+        }
+
+        private float GetCurrentSoundtrackTime()
+        {
+            return soundtrackSource != null && soundtrackSource.clip != null ? soundtrackSource.time : Mathf.Max(0f, Time.time - soundtrackClockStartTime);
         }
     }
 }

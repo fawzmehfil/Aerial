@@ -6,6 +6,7 @@ namespace Drift
     public sealed class LevelManager : MonoBehaviour
     {
         private GameObject currentLevelRoot;
+        private GameObject practiceCheckpointMarker;
         private DroneController currentDrone;
         private LevelDefinition currentLevel;
         private PortalManager portalManager;
@@ -73,7 +74,23 @@ namespace Drift
                 Destroy(currentLevelRoot);
             }
 
+            practiceCheckpointMarker = null;
             currentDrone = null;
+        }
+
+        public void ShowPracticeCheckpointMarker(Vector3 position, int checkpointNumber)
+        {
+            if (currentLevelRoot == null)
+            {
+                return;
+            }
+
+            if (practiceCheckpointMarker != null)
+            {
+                Destroy(practiceCheckpointMarker);
+            }
+
+            practiceCheckpointMarker = RuntimeVisualFactory.CreatePracticeCheckpointMarker(currentLevelRoot.transform, position, checkpointNumber);
         }
 
         private static void CreateLighting()

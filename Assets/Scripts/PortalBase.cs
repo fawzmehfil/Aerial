@@ -34,6 +34,16 @@ namespace Drift
             return !consumed && !missed && dronePosition.z > ZPosition + threshold;
         }
 
+        public void ResetForPracticeRespawn(float checkpointZ)
+        {
+            consumed = ZPosition < checkpointZ - 0.5f;
+            missed = false;
+            if (activationParticles != null)
+            {
+                activationParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+        }
+
         private void Update()
         {
             if (consumed || missed || GameManager.Instance == null || !GameManager.Instance.IsPlaying)

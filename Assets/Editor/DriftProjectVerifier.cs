@@ -34,6 +34,7 @@ namespace DriftEditor
             CheckRingAndPortalContracts(failures);
             CheckPortalVisualContract(failures);
             CheckNoArrowKeyBindings(failures);
+            CheckPracticeModeContracts(failures);
             CheckNoInvertedMode(failures);
             CheckProgression(failures);
             CheckProjectAssets(failures);
@@ -343,6 +344,88 @@ namespace DriftEditor
             }
         }
 
+        private static void CheckPracticeModeContracts(List<string> failures)
+        {
+            Type practiceCheckpoint = FindType("Drift.PracticeCheckpoint");
+            if (practiceCheckpoint == null)
+            {
+                failures.Add("PracticeCheckpoint should exist for practice-mode respawn state.");
+            }
+
+            Type droneSnapshot = FindType("Drift.DronePracticeSnapshot");
+            if (droneSnapshot == null)
+            {
+                failures.Add("DronePracticeSnapshot should exist so practice respawns can restore drone state.");
+            }
+
+            if (typeof(GameManager).GetMethod("StartPracticeLevel", BindingFlags.Public | BindingFlags.Instance) == null)
+            {
+                failures.Add("GameManager.StartPracticeLevel should start any level in practice mode.");
+            }
+
+            if (typeof(GameManager).GetProperty("IsPracticeMode", BindingFlags.Public | BindingFlags.Instance) == null)
+            {
+                failures.Add("GameManager.IsPracticeMode should expose practice-mode state.");
+            }
+
+            if (typeof(GameManager).GetMethod("RecordPracticeCheckpoint", BindingFlags.Public | BindingFlags.Instance) == null)
+            {
+                failures.Add("GameManager.RecordPracticeCheckpoint should create automatic practice checkpoints.");
+            }
+
+            if (typeof(GameManager).GetMethod("SyncPracticeSoundtrack", BindingFlags.Public | BindingFlags.Instance) == null)
+            {
+                failures.Add("GameManager.SyncPracticeSoundtrack should seek music to checkpoint time on respawn.");
+            }
+
+            if (typeof(DroneController).GetMethod("CapturePracticeSnapshot", BindingFlags.Public | BindingFlags.Instance) == null ||
+                typeof(DroneController).GetMethod("RestorePracticeSnapshot", BindingFlags.Public | BindingFlags.Instance) == null)
+            {
+                failures.Add("DroneController should capture and restore practice snapshots.");
+            }
+
+            if (typeof(RingManager).GetMethod("SetCurrentRingIndex", BindingFlags.Public | BindingFlags.Instance) == null)
+            {
+                failures.Add("RingManager.SetCurrentRingIndex should restore ring progress on practice respawn.");
+            }
+
+            if (typeof(PortalBase).GetMethod("ResetForPracticeRespawn", BindingFlags.Public | BindingFlags.Instance) == null)
+            {
+                failures.Add("PortalBase.ResetForPracticeRespawn should restore portal trigger state on practice respawn.");
+            }
+
+            if (FindType("Drift.PracticeCheckpointPlanner") == null)
+            {
+                failures.Add("PracticeCheckpointPlanner should define practical checkpoint cadence for every level.");
+            }
+            else
+            {
+                foreach (LevelDefinition level in LevelCatalog.GetLevels())
+                {
+                    int checkpointCount = PracticeCheckpointPlanner.CountAutoCheckpoints(level);
+                    int expectedMinimum = Mathf.Max(4, Mathf.CeilToInt(level.Rings.Length * 0.65f));
+                    if (checkpointCount < expectedMinimum)
+                    {
+                        failures.Add($"{level.DisplayName} has too few practice checkpoints: {checkpointCount}.");
+                    }
+                }
+            }
+
+            string uiPath = Path.Combine(Directory.GetCurrentDirectory(), "Assets/Scripts/UIManager.cs");
+            if (File.Exists(uiPath))
+            {
+                string uiSource = File.ReadAllText(uiPath);
+                if (!uiSource.Contains("StartPracticeLevel") || !uiSource.Contains("Completed in Practice Mode"))
+                {
+                    failures.Add("UIManager should expose practice-mode buttons and a practice completion screen.");
+                }
+            }
+            else
+            {
+                failures.Add("UIManager.cs could not be inspected for practice-mode controls.");
+            }
+        }
+
         private static void CheckNoInvertedMode(List<string> failures)
         {
             if (Enum.GetNames(typeof(PortalKind)).Any(name => name.Contains("Inverted")))
@@ -426,6 +509,19 @@ namespace DriftEditor
                 failures.Add($"Starting tutorial created too few portals: {portalCount}.");
             }
 
+            manager.StartPracticeLevel(1);
+            if (!manager.IsPracticeMode)
+            {
+                failures.Add("Starting practice mode did not set GameManager.IsPracticeMode.");
+            }
+
+            manager.CompleteCurrentLevel();
+            if (manager.Progression.IsLevelCompleted(1))
+            {
+                failures.Add("Completing a level in practice mode should not save normal completion.");
+            }
+
+            manager.StartLevel(1);
             manager.CompleteCurrentLevel();
             if (!manager.Progression.IsLevelCompleted(1) || !manager.Progression.IsLevelUnlocked(2))
             {
