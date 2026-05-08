@@ -11,9 +11,6 @@ namespace Drift
         [SerializeField] private float acceleration = 28f;
         [SerializeField] private float damping = 20f;
         [SerializeField] private Vector2 boundary = new Vector2(8f, 5f);
-        [SerializeField] private float snapImpulse = 7.5f;
-        [SerializeField] private float burstImpulse = 7.2f;
-        [SerializeField] private float abilityCooldown = 0.42f;
 
         [Header("Visual Tilt")]
         [SerializeField] private Transform visualRoot;
@@ -25,13 +22,8 @@ namespace Drift
         private Vector3 spawnPosition;
         private Quaternion spawnRotation;
         private BoxCollider hitbox;
-        private AudioSource abilityAudio;
-        private ParticleSystem abilityParticles;
         private float defaultForwardSpeed;
         private float currentForwardSpeed;
-        private float nextAbilityTime;
-        private float abilityRollKick;
-        private float abilityPitchKick;
         private float orientationRoll;
         private float targetOrientationRoll;
         private float sizeMultiplier = 1f;
@@ -61,8 +53,6 @@ namespace Drift
                 baseHitboxSize = hitbox.size;
             }
 
-            abilityAudio = GetComponent<AudioSource>();
-            abilityParticles = GetComponentInChildren<ParticleSystem>();
             spawnPosition = transform.position;
             spawnRotation = transform.rotation;
         }
@@ -75,8 +65,6 @@ namespace Drift
             sizeMultiplier = 1f;
             orientationRoll = 0f;
             targetOrientationRoll = 0f;
-            abilityRollKick = 0f;
-            abilityPitchKick = 0f;
             UpdateHitboxScale();
             if (visualRoot != null)
             {
@@ -139,8 +127,6 @@ namespace Drift
                 return;
             }
 
-            HandleAbilityInput();
-
             Vector2 input = ReadMoveInput(orientationRoll);
             if (input.sqrMagnitude > 1f)
             {
@@ -187,57 +173,6 @@ namespace Drift
             return new Vector2(rotated.x, rotated.y);
         }
 
-        private void HandleAbilityInput()
-        {
-            if (Time.time < nextAbilityTime)
-            {
-                return;
-            }
-
-            if (Input.GetKeyDown(KeyCode.LeftArrow))
-            {
-                TriggerAbility(new Vector2(-snapImpulse, 0f), -95f, 0f);
-            }
-            else if (Input.GetKeyDown(KeyCode.RightArrow))
-            {
-                TriggerAbility(new Vector2(snapImpulse, 0f), 95f, 0f);
-            }
-            else if (Input.GetKeyDown(KeyCode.UpArrow))
-            {
-                Vector3 rotated = Quaternion.Euler(0f, 0f, orientationRoll) * Vector3.up;
-                TriggerAbility(new Vector2(rotated.x, rotated.y) * burstImpulse, 0f, 34f);
-            }
-            else if (Input.GetKeyDown(KeyCode.DownArrow))
-            {
-                Vector3 rotated = Quaternion.Euler(0f, 0f, orientationRoll) * Vector3.down;
-                TriggerAbility(new Vector2(rotated.x, rotated.y) * burstImpulse, 0f, -34f);
-            }
-        }
-
-        private void TriggerAbility(Vector2 impulse, float rollKick, float pitchKick)
-        {
-            lateralVelocity += impulse;
-            lateralVelocity = Vector2.ClampMagnitude(lateralVelocity, lateralSpeed * 1.45f);
-            abilityRollKick = rollKick;
-            abilityPitchKick = pitchKick;
-            nextAbilityTime = Time.time + abilityCooldown;
-
-            if (abilityParticles != null)
-            {
-                abilityParticles.Play();
-            }
-
-            if (abilityAudio == null)
-            {
-                abilityAudio = GetComponent<AudioSource>();
-            }
-
-            if (abilityAudio != null)
-            {
-                abilityAudio.PlayOneShot(RuntimeVisualFactory.CreateToneClip("Ability Whoosh", 520f, 0.16f, 0.25f), 0.45f);
-            }
-        }
-
         private void DampLateralVelocity()
         {
             lateralVelocity = Vector2.MoveTowards(lateralVelocity, Vector2.zero, damping * Time.deltaTime);
@@ -267,9 +202,7 @@ namespace Drift
 
             float roll = -Mathf.Clamp(lateralVelocity.x / lateralSpeed, -1f, 1f) * maxRoll;
             float pitch = Mathf.Clamp(lateralVelocity.y / lateralSpeed, -1f, 1f) * maxPitch;
-            abilityRollKick = Mathf.MoveTowards(abilityRollKick, 0f, 220f * Time.deltaTime);
-            abilityPitchKick = Mathf.MoveTowards(abilityPitchKick, 0f, 120f * Time.deltaTime);
-            Quaternion targetRotation = Quaternion.Euler(pitch + abilityPitchKick, 0f, roll + abilityRollKick + orientationRoll);
+            Quaternion targetRotation = Quaternion.Euler(pitch, 0f, roll + orientationRoll);
             visualRoot.localRotation = Quaternion.Slerp(visualRoot.localRotation, targetRotation, tiltSmoothing * Time.deltaTime);
         }
 

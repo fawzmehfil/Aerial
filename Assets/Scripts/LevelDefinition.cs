@@ -9,7 +9,8 @@ namespace Drift
         NeonCyanCorridor,
         RedGateIndustrial,
         CosmicRingVoid,
-        MixedAdventure
+        MixedAdventure,
+        AcheronAbyss
     }
 
     public enum PortalKind
@@ -41,6 +42,9 @@ namespace Drift
         public Vector2 Boundary;
         public EnvironmentTheme Theme;
         public bool IsTutorial;
+        public string SoundtrackPath;
+        public float SoundtrackDuration;
+        public bool SuppressGameplaySoundEffects;
         public RingSpec[] Rings;
         public ObstacleSpec[] Obstacles;
         public PortalSpec[] Portals;
@@ -55,7 +59,10 @@ namespace Drift
             RingSpec[] rings,
             ObstacleSpec[] obstacles,
             PortalSpec[] portals = null,
-            bool isTutorial = false)
+            bool isTutorial = false,
+            string soundtrackPath = null,
+            float soundtrackDuration = 0f,
+            bool suppressGameplaySoundEffects = false)
         {
             LevelNumber = levelNumber;
             DisplayName = displayName;
@@ -64,6 +71,9 @@ namespace Drift
             Boundary = boundary;
             Theme = theme;
             IsTutorial = isTutorial;
+            SoundtrackPath = soundtrackPath;
+            SoundtrackDuration = soundtrackDuration;
+            SuppressGameplaySoundEffects = suppressGameplaySoundEffects;
             Rings = rings;
             Obstacles = obstacles;
             Portals = portals ?? Array.Empty<PortalSpec>();

@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using System;
+using System.IO;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Drift
 {
@@ -28,12 +31,14 @@ namespace Drift
         private CameraFollow cameraFollow;
         private PortalManager portalManager;
         private AudioSource audioSource;
+        private AudioSource soundtrackSource;
         private AudioClip ringPassClip;
         private AudioClip failClip;
         private AudioClip completeClip;
         private int currentLevelNumber = 1;
         private float effectsVolume = 1f;
         private Coroutine failureRoutine;
+        private Coroutine soundtrackRoutine;
 
         public ProgressionService Progression => progression;
         public IReadOnlyList<LevelDefinition> Levels => levels;
@@ -54,6 +59,7 @@ namespace Drift
         {
             state = GameState.MainMenu;
             Time.timeScale = 1f;
+            StopLevelSoundtrack();
             levelManager.ClearLevel();
             uiManager.ShowMainMenu();
         }
@@ -62,6 +68,7 @@ namespace Drift
         {
             state = GameState.LevelSelect;
             Time.timeScale = 1f;
+            StopLevelSoundtrack();
             levelManager.ClearLevel();
             uiManager.ShowLevelSelect(levels, progression);
         }
@@ -104,8 +111,10 @@ namespace Drift
             currentLevelNumber = Mathf.Clamp(levelNumber, 1, levels.Count);
             state = GameState.Playing;
             Time.timeScale = 1f;
-            levelManager.LoadLevel(levels[currentLevelNumber - 1], ringManager, cameraFollow);
-            uiManager.ShowHud(levels[currentLevelNumber - 1]);
+            LevelDefinition level = levels[currentLevelNumber - 1];
+            levelManager.LoadLevel(level, ringManager, cameraFollow);
+            uiManager.ShowHud(level);
+            StartLevelSoundtrack(level);
             UpdateHudProgress();
         }
 
@@ -119,8 +128,10 @@ namespace Drift
 
             state = GameState.Playing;
             Time.timeScale = 1f;
+            StopLevelSoundtrack();
             levelManager.ResetCurrentLevel(ringManager, cameraFollow);
             uiManager.ShowHud(levels[currentLevelNumber - 1]);
+            StartLevelSoundtrack(levels[currentLevelNumber - 1]);
             UpdateHudProgress();
         }
 
@@ -133,6 +144,7 @@ namespace Drift
 
             state = GameState.Paused;
             Time.timeScale = 0f;
+            PauseLevelSoundtrack();
             uiManager.ShowPauseMenu();
         }
 
@@ -145,6 +157,7 @@ namespace Drift
 
             state = GameState.Playing;
             Time.timeScale = 1f;
+            ResumeLevelSoundtrack();
             uiManager.ShowHud(levels[currentLevelNumber - 1]);
             UpdateHudProgress();
         }
@@ -157,7 +170,12 @@ namespace Drift
             }
 
             state = GameState.Failed;
-            audioSource.PlayOneShot(failClip, 0.8f * effectsVolume);
+            if (!CurrentLevelSuppressesGameplaySoundEffects())
+            {
+                audioSource.PlayOneShot(failClip, 0.8f * effectsVolume);
+            }
+
+            StopLevelSoundtrack();
             uiManager.ShowFailure(reason);
             failureRoutine = StartCoroutine(ResetAfterFailure());
         }
@@ -171,7 +189,12 @@ namespace Drift
 
             state = GameState.LevelComplete;
             progression.MarkLevelComplete(currentLevelNumber);
-            audioSource.PlayOneShot(completeClip, 0.75f * effectsVolume);
+            if (!CurrentLevelSuppressesGameplaySoundEffects())
+            {
+                audioSource.PlayOneShot(completeClip, 0.75f * effectsVolume);
+            }
+
+            StopLevelSoundtrack();
             uiManager.ShowLevelComplete(currentLevelNumber, currentLevelNumber < levels.Count);
         }
 
@@ -188,7 +211,7 @@ namespace Drift
         public void ShowPortalEffect(string label, float duration)
         {
             uiManager.ShowPortalEffect(label, duration);
-            if (audioSource != null)
+            if (audioSource != null && !CurrentLevelSuppressesGameplaySoundEffects())
             {
                 audioSource.PlayOneShot(RuntimeVisualFactory.CreateToneClip("Portal Activate", 420f, 0.24f, 0.28f), 0.55f * effectsVolume);
             }
@@ -196,13 +219,17 @@ namespace Drift
 
         public void PlayRingPassFeedback()
         {
-            audioSource.PlayOneShot(ringPassClip, 0.55f * effectsVolume);
+            if (audioSource != null && !CurrentLevelSuppressesGameplaySoundEffects())
+            {
+                audioSource.PlayOneShot(ringPassClip, 0.55f * effectsVolume);
+            }
         }
 
         public void ShowSettings()
         {
             state = GameState.Settings;
             Time.timeScale = 1f;
+            StopLevelSoundtrack();
             levelManager.ClearLevel();
             uiManager.ShowSettings();
         }
@@ -331,9 +358,100 @@ namespace Drift
         {
             audioSource = gameObject.AddComponent<AudioSource>();
             audioSource.spatialBlend = 0f;
+            soundtrackSource = gameObject.AddComponent<AudioSource>();
+            soundtrackSource.spatialBlend = 0f;
+            soundtrackSource.loop = false;
+            soundtrackSource.playOnAwake = false;
             ringPassClip = RuntimeVisualFactory.CreateToneClip("Ring Pass", 880f, 0.18f, 0.45f);
             failClip = RuntimeVisualFactory.CreateToneClip("Fail", 120f, 0.35f, 0.6f);
             completeClip = RuntimeVisualFactory.CreateToneClip("Level Complete", 660f, 0.55f, 0.55f);
+        }
+
+        private bool CurrentLevelSuppressesGameplaySoundEffects()
+        {
+            if (levels == null || currentLevelNumber < 1 || currentLevelNumber > levels.Count)
+            {
+                return false;
+            }
+
+            return levels[currentLevelNumber - 1].SuppressGameplaySoundEffects;
+        }
+
+        private void StartLevelSoundtrack(LevelDefinition level)
+        {
+            StopLevelSoundtrack();
+            if (level == null || string.IsNullOrWhiteSpace(level.SoundtrackPath))
+            {
+                return;
+            }
+
+            soundtrackRoutine = StartCoroutine(LoadAndPlaySoundtrack(level.SoundtrackPath));
+        }
+
+        private void StopLevelSoundtrack()
+        {
+            if (soundtrackRoutine != null)
+            {
+                StopCoroutine(soundtrackRoutine);
+                soundtrackRoutine = null;
+            }
+
+            if (soundtrackSource != null)
+            {
+                soundtrackSource.Stop();
+                soundtrackSource.clip = null;
+            }
+        }
+
+        private void PauseLevelSoundtrack()
+        {
+            if (soundtrackSource != null && soundtrackSource.isPlaying)
+            {
+                soundtrackSource.Pause();
+            }
+        }
+
+        private void ResumeLevelSoundtrack()
+        {
+            if (soundtrackSource != null && soundtrackSource.clip != null)
+            {
+                soundtrackSource.UnPause();
+            }
+        }
+
+        private IEnumerator LoadAndPlaySoundtrack(string projectRelativePath)
+        {
+            string fullPath = ResolveProjectRelativePath(projectRelativePath);
+            if (!File.Exists(fullPath))
+            {
+                Debug.LogError($"Soundtrack not found: {projectRelativePath}");
+                soundtrackRoutine = null;
+                yield break;
+            }
+
+            using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(new Uri(fullPath).AbsoluteUri, AudioType.MPEG))
+            {
+                yield return request.SendWebRequest();
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    Debug.LogError($"Could not load soundtrack {projectRelativePath}: {request.error}");
+                    soundtrackRoutine = null;
+                    yield break;
+                }
+
+                AudioClip clip = DownloadHandlerAudioClip.GetContent(request);
+                soundtrackSource.clip = clip;
+                soundtrackSource.time = 0f;
+                soundtrackSource.Play();
+            }
+
+            soundtrackRoutine = null;
+        }
+
+        private static string ResolveProjectRelativePath(string projectRelativePath)
+        {
+            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            return Path.GetFullPath(Path.Combine(projectRoot, projectRelativePath));
         }
 
         private IEnumerator ResetAfterFailure()

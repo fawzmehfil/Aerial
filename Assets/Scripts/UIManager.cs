@@ -169,7 +169,7 @@ namespace Drift
             }
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label("WASD position  |  Arrows burst and roll", subtitleStyle);
+            GUILayout.Label("WASD position  |  Portals shift the route", subtitleStyle);
             GUILayout.EndArea();
         }
 
@@ -208,7 +208,7 @@ namespace Drift
             GUI.Label(new Rect(Screen.width - 220f, 18f, 196f, 34f), $"{hudCurrentRing} / {hudTotalRings}", RightAligned(hudStyle));
             if (hudLevel != null && hudLevel.IsTutorial)
             {
-                GUI.Label(new Rect(24f, 54f, 680f, 30f), "WASD move  |  Arrows burst/roll  |  Portals change speed, gravity, and size", hudStyle);
+                GUI.Label(new Rect(24f, 54f, 680f, 30f), "WASD move  |  Portals change speed, gravity, and size", hudStyle);
             }
 
             if (!string.IsNullOrEmpty(portalEffectLabel) && Time.time < portalEffectUntil)
@@ -216,7 +216,7 @@ namespace Drift
                 GUI.Label(new Rect(Screen.width * 0.5f - 190f, 58f, 380f, 34f), portalEffectLabel, Centered(hudStyle));
             }
 
-            GUI.Label(new Rect(Screen.width * 0.5f - 230f, Screen.height - 44f, 460f, 28f), "R Restart   Esc Pause   Arrow Keys Burst / Snap Roll", Centered(hudStyle));
+            GUI.Label(new Rect(Screen.width * 0.5f - 230f, Screen.height - 44f, 460f, 28f), "WASD Move   R Restart   Esc Pause", Centered(hudStyle));
         }
 
         private void DrawPauseMenu()

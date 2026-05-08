@@ -17,6 +17,7 @@ namespace Drift
         [SerializeField] private ParticleSystem passParticles;
         [SerializeField] private ParticleSystem missParticles;
         [SerializeField] private Collider triggerCollider;
+        [SerializeField] private float passDepth = 1.65f;
 
         private RingManager ringManager;
         private RingVisualState state;
@@ -25,12 +26,14 @@ namespace Drift
         public int RingIndex => ringIndex;
         public float ZPosition => transform.position.z;
         public float PassRadius => passRadius;
+        public float PassDepth => passDepth;
         public bool IsCompleted => state == RingVisualState.Completed;
 
-        public void Configure(int index, float radius, RingManager manager, Renderer[] ringRenderers, ParticleSystem particles, ParticleSystem missedParticles, Collider trigger)
+        public void Configure(int index, float radius, float depth, RingManager manager, Renderer[] ringRenderers, ParticleSystem particles, ParticleSystem missedParticles, Collider trigger)
         {
             ringIndex = index;
             passRadius = radius;
+            passDepth = depth;
             ringManager = manager;
             renderers = ringRenderers;
             passParticles = particles;
@@ -116,6 +119,34 @@ namespace Drift
             return dronePosition.z > ZPosition + threshold;
         }
 
+        public bool TryPass(DroneController drone)
+        {
+            if (state != RingVisualState.Current || drone == null || ringManager == null)
+            {
+                return false;
+            }
+
+            if (!IsInsidePassWindow(drone.transform.position))
+            {
+                return false;
+            }
+
+            ringManager.PassRing(this);
+            return true;
+        }
+
+        public bool IsInsidePassWindow(Vector3 worldPosition)
+        {
+            Vector3 local = transform.InverseTransformPoint(worldPosition);
+            if (Mathf.Abs(local.z) > passDepth)
+            {
+                return false;
+            }
+
+            float radialDistance = new Vector2(local.x, local.y).magnitude;
+            return radialDistance <= passRadius;
+        }
+
         private void OnTriggerEnter(Collider other)
         {
             if (state != RingVisualState.Current || !other.CompareTag("Player"))
@@ -123,18 +154,14 @@ namespace Drift
                 return;
             }
 
-            Vector3 local = transform.InverseTransformPoint(other.transform.position);
-            float radialDistance = new Vector2(local.x, local.y).magnitude;
-            if (radialDistance <= passRadius && ringManager != null)
-            {
-                ringManager.PassRing(this);
-            }
+            TryPass(other.GetComponent<DroneController>());
         }
 
         private void OnDrawGizmosSelected()
         {
             Gizmos.color = new Color(0.2f, 1f, 0.95f, 0.45f);
             Gizmos.DrawWireSphere(transform.position, passRadius);
+            Gizmos.DrawWireCube(transform.position, new Vector3(passRadius * 2f, passRadius * 2f, passDepth * 2f));
             Gizmos.color = new Color(1f, 0.18f, 0.12f, 0.55f);
             Vector3 center = transform.position + Vector3.forward * missPlaneOffset;
             Gizmos.DrawWireCube(center, new Vector3(passRadius * 2.2f, passRadius * 2.2f, 0.08f));

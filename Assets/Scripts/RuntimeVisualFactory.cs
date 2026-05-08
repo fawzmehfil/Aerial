@@ -56,7 +56,7 @@ namespace Drift
             return material;
         }
 
-        public static GameObject CreateDrone(Vector3 position, float forwardSpeed, Vector2 boundary)
+        public static GameObject CreateDrone(Vector3 position, float forwardSpeed, Vector2 boundary, bool suppressEngineAudio = false)
         {
             GameObject root = new GameObject("Drone");
             root.tag = "Player";
@@ -127,17 +127,18 @@ namespace Drift
                 trail.endColor = new Color(0.15f, 0.95f, 1f, 0f);
             }
 
-            CreateAbilityParticles(visualRoot.transform);
-
             DroneController controller = root.AddComponent<DroneController>();
             controller.Configure(forwardSpeed, boundary, visualRoot.transform);
 
-            AudioSource engine = root.AddComponent<AudioSource>();
-            engine.clip = CreateToneClip("Engine Hum", 82f, 1.5f, 0.12f);
-            engine.loop = true;
-            engine.volume = 0.2f;
-            engine.spatialBlend = 0.35f;
-            engine.Play();
+            if (!suppressEngineAudio)
+            {
+                AudioSource engine = root.AddComponent<AudioSource>();
+                engine.clip = CreateToneClip("Engine Hum", 82f, 1.5f, 0.12f);
+                engine.loop = true;
+                engine.volume = 0.2f;
+                engine.spatialBlend = 0.35f;
+                engine.Play();
+            }
 
             return root;
         }
@@ -176,7 +177,8 @@ namespace Drift
             ParticleSystem missParticles = CreateRingParticles(root.transform, new Color(1f, 0.12f, 0.08f));
 
             RingCheckpoint checkpoint = root.AddComponent<RingCheckpoint>();
-            checkpoint.Configure(index, spec.Radius * 0.84f, manager, renderers.ToArray(), particles, missParticles, trigger);
+            float passRadius = Mathf.Max(0.8f, spec.Radius - 0.52f);
+            checkpoint.Configure(index, passRadius, 1.65f, manager, renderers.ToArray(), particles, missParticles, trigger);
             return checkpoint;
         }
 
@@ -215,29 +217,7 @@ namespace Drift
             root.transform.position = spec.Position;
 
             Color color = GetPortalColor(spec.Kind);
-            Material material = CreateNeonMaterial($"{spec.Kind} Material", color, 3.5f, true);
-            int segmentCount = 24;
-            for (int i = 0; i < segmentCount; i++)
-            {
-                float angle = i / (float)segmentCount * Mathf.PI * 2f;
-                Vector3 localPosition = new Vector3(Mathf.Cos(angle) * spec.Radius, Mathf.Sin(angle) * spec.Radius, 0f);
-                GameObject segment = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                segment.name = "Portal Segment";
-                segment.transform.SetParent(root.transform, false);
-                segment.transform.localPosition = localPosition;
-                segment.transform.localRotation = Quaternion.Euler(0f, 0f, angle * Mathf.Rad2Deg + 90f);
-                segment.transform.localScale = new Vector3(spec.Radius * 0.24f, 0.11f, 0.48f);
-                segment.GetComponent<Renderer>().sharedMaterial = material;
-                DestroyObject(segment.GetComponent<Collider>());
-            }
-
-            GameObject core = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            core.name = "Portal Core";
-            core.transform.SetParent(root.transform, false);
-            core.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            core.transform.localScale = new Vector3(spec.Radius * 1.45f, 0.04f, spec.Radius * 1.45f);
-            core.GetComponent<Renderer>().sharedMaterial = CreateNeonMaterial($"{spec.Kind} Core", new Color(color.r, color.g, color.b, 0.16f), 1.2f, true);
-            DestroyObject(core.GetComponent<Collider>());
+            CreatePortalMesh(root.transform, spec, color);
 
             BoxCollider trigger = root.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
@@ -278,6 +258,9 @@ namespace Drift
                     break;
                 case EnvironmentTheme.CosmicRingVoid:
                     CreateCosmicVoid(parent, level.Boundary, courseLength);
+                    break;
+                case EnvironmentTheme.AcheronAbyss:
+                    CreateAcheronAbyss(parent, level.Boundary, courseLength);
                     break;
                 default:
                     CreateRectangularTunnel(parent, level.Boundary, courseLength * 0.45f, new Color(0.04f, 0.075f, 0.13f), new Color(0.1f, 0.9f, 1f), 14f, true);
@@ -345,6 +328,92 @@ namespace Drift
             return primitive;
         }
 
+        private static void CreatePortalMesh(Transform parent, PortalSpec spec, Color color)
+        {
+            Material meshMaterial = CreateNeonMaterial($"{spec.Kind} Center Mesh", new Color(color.r, color.g, color.b, 0.24f), 2.8f, true);
+            Material iconMaterial = CreateNeonMaterial($"{spec.Kind} Icon", Color.white, 3.4f, true);
+
+            CreatePortalSegmentRing(parent, "Portal Inner Mesh Ring", spec.Radius * 0.66f, 28, spec.Radius * 0.105f, 0.045f, 0.24f, -0.04f, 5f, meshMaterial);
+            CreatePortalSegmentRing(parent, "Portal Core Mesh Ring", spec.Radius * 0.36f, 18, spec.Radius * 0.08f, 0.04f, 0.22f, 0.06f, 0f, meshMaterial);
+
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = i / 8f * Mathf.PI * 2f;
+                Vector3 localPosition = new Vector3(Mathf.Cos(angle) * spec.Radius * 0.34f, Mathf.Sin(angle) * spec.Radius * 0.34f, -0.1f);
+                GameObject spoke = AddPrimitive(parent, PrimitiveType.Cube, "Portal Mesh Spoke", localPosition, new Vector3(spec.Radius * 0.52f, 0.035f, 0.2f), meshMaterial);
+                spoke.transform.localRotation = Quaternion.Euler(0f, 0f, angle * Mathf.Rad2Deg);
+            }
+
+            if (spec.Kind == PortalKind.SpeedFast || spec.Kind == PortalKind.SpeedSlow || spec.Kind == PortalKind.SpeedNormal)
+            {
+                CreateSpeedPortalIcon(parent, spec, iconMaterial);
+            }
+            else if (spec.Kind == PortalKind.SizeSmall || spec.Kind == PortalKind.SizeLarge || spec.Kind == PortalKind.SizeNormal)
+            {
+                CreateSizePortalIcon(parent, spec, iconMaterial);
+            }
+            else
+            {
+                AddPrimitive(parent, PrimitiveType.Cube, "Portal Gravity Marker Horizontal", Vector3.zero, new Vector3(spec.Radius * 0.95f, 0.1f, 0.28f), iconMaterial);
+                AddPrimitive(parent, PrimitiveType.Cube, "Portal Gravity Marker Vertical", Vector3.zero, new Vector3(0.1f, spec.Radius * 0.95f, 0.28f), iconMaterial);
+            }
+        }
+
+        private static void CreateSpeedPortalIcon(Transform parent, PortalSpec spec, Material material)
+        {
+            if (spec.Kind == PortalKind.SpeedSlow)
+            {
+                AddPrimitive(parent, PrimitiveType.Cube, "Portal Slow Pause Bar", new Vector3(-spec.Radius * 0.16f, 0f, 0f), new Vector3(0.12f, spec.Radius * 0.8f, 0.32f), material);
+                AddPrimitive(parent, PrimitiveType.Cube, "Portal Slow Pause Bar", new Vector3(spec.Radius * 0.16f, 0f, 0f), new Vector3(0.12f, spec.Radius * 0.8f, 0.32f), material);
+                return;
+            }
+
+            if (spec.Kind == PortalKind.SpeedNormal)
+            {
+                AddPrimitive(parent, PrimitiveType.Cube, "Portal Normal Speed Bar", new Vector3(0f, spec.Radius * 0.16f, 0f), new Vector3(spec.Radius * 0.7f, 0.1f, 0.32f), material);
+                AddPrimitive(parent, PrimitiveType.Cube, "Portal Normal Speed Bar", new Vector3(0f, -spec.Radius * 0.16f, 0f), new Vector3(spec.Radius * 0.7f, 0.1f, 0.32f), material);
+                return;
+            }
+
+            float direction = spec.Kind == PortalKind.SpeedSlow ? -1f : 1f;
+            for (int i = 0; i < 3; i++)
+            {
+                float x = (i - 1) * spec.Radius * 0.28f;
+                GameObject upper = AddPrimitive(parent, PrimitiveType.Cube, "Portal Speed Chevron", new Vector3(x, spec.Radius * 0.13f, 0f), new Vector3(spec.Radius * 0.38f, 0.09f, 0.32f), material);
+                upper.transform.localRotation = Quaternion.Euler(0f, 0f, direction * 28f);
+                GameObject lower = AddPrimitive(parent, PrimitiveType.Cube, "Portal Speed Chevron", new Vector3(x, -spec.Radius * 0.13f, 0f), new Vector3(spec.Radius * 0.38f, 0.09f, 0.32f), material);
+                lower.transform.localRotation = Quaternion.Euler(0f, 0f, direction * -28f);
+            }
+        }
+
+        private static void CreateSizePortalIcon(Transform parent, PortalSpec spec, Material material)
+        {
+            float outerRadius = spec.Radius * 0.52f;
+            float innerRadius = spec.Kind == PortalKind.SizeSmall ? spec.Radius * 0.22f : spec.Radius * 0.38f;
+            CreatePortalSegmentRing(parent, "Portal Size Glyph Ring", outerRadius, 24, spec.Radius * 0.1f, 0.055f, 0.28f, 0f, 0f, material);
+            CreatePortalSegmentRing(parent, "Portal Size Glyph Ring", innerRadius, 18, spec.Radius * 0.085f, 0.05f, 0.28f, 0f, 8f, material);
+        }
+
+        private static void CreatePortalSegmentRing(Transform parent, string name, float radius, int segmentCount, float segmentLength, float thickness, float depth, float zOffset, float phaseDegrees, Material material)
+        {
+            GameObject ring = new GameObject(name);
+            ring.transform.SetParent(parent, false);
+            ring.transform.localPosition = Vector3.forward * zOffset;
+            for (int i = 0; i < segmentCount; i++)
+            {
+                float angle = i / (float)segmentCount * Mathf.PI * 2f + phaseDegrees * Mathf.Deg2Rad;
+                Vector3 localPosition = new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f);
+                GameObject segment = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                segment.name = $"{name} Segment";
+                segment.transform.SetParent(ring.transform, false);
+                segment.transform.localPosition = localPosition;
+                segment.transform.localRotation = Quaternion.Euler(0f, 0f, angle * Mathf.Rad2Deg + 90f);
+                segment.transform.localScale = new Vector3(segmentLength, thickness, depth);
+                segment.GetComponent<Renderer>().sharedMaterial = material;
+                DestroyObject(segment.GetComponent<Collider>());
+            }
+        }
+
         private static void DestroyObject(Object target)
         {
             if (target == null)
@@ -386,33 +455,6 @@ namespace Drift
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = 1.4f;
 
-            return particles;
-        }
-
-        private static ParticleSystem CreateAbilityParticles(Transform parent)
-        {
-            GameObject particleObject = new GameObject("Ability Burst");
-            particleObject.transform.SetParent(parent, false);
-            particleObject.transform.localPosition = Vector3.zero;
-            ParticleSystem particles = particleObject.AddComponent<ParticleSystem>();
-            ParticleSystem.MainModule main = particles.main;
-            main.startLifetime = 0.18f;
-            main.startSpeed = 5.5f;
-            main.startSize = 0.05f;
-            main.startColor = new Color(0.35f, 1f, 0.95f, 0.85f);
-            main.maxParticles = 48;
-            main.loop = false;
-            main.playOnAwake = false;
-
-            ParticleSystem.EmissionModule emission = particles.emission;
-            emission.enabled = true;
-            emission.rateOverTime = 0f;
-            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 24) });
-
-            ParticleSystem.ShapeModule shape = particles.shape;
-            shape.enabled = true;
-            shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 0.35f;
             return particles;
         }
 
@@ -496,6 +538,42 @@ namespace Drift
             {
                 float x = Mathf.Sin(z * 0.19f) * boundary.x * 1.2f;
                 AddPrimitive(parent, PrimitiveType.Cube, "Distant Ridge", new Vector3(x, -boundary.y - 4.2f, z), new Vector3(boundary.x * 2.8f, 1.2f + Mathf.Sin(z) * 0.4f, 8f), terrainMaterial);
+            }
+        }
+
+        private static void CreateAcheronAbyss(Transform parent, Vector2 boundary, float courseLength)
+        {
+            Material frameMaterial = CreateNeonMaterial("Acheron Bone Frame", new Color(0.92f, 0.94f, 1f), 2.8f, true);
+            Material pulseMaterial = CreateNeonMaterial("Acheron Red Pulse", new Color(1f, 0.08f, 0.12f), 3.2f, true);
+            Material shardMaterial = CreateNeonMaterial("Acheron Violet Shard", new Color(0.48f, 0.12f, 0.95f), 1.6f, true);
+            Material voidMaterial = CreateNeonMaterial("Acheron Void Plate", new Color(0.035f, 0.026f, 0.052f), 0.2f);
+
+            float width = boundary.x * 2.34f;
+            float height = boundary.y * 2.34f;
+            for (float z = 0f; z <= courseLength; z += 20f)
+            {
+                GameObject frame = new GameObject("Acheron Pulse Frame");
+                frame.transform.SetParent(parent, false);
+                frame.transform.position = new Vector3(0f, 0f, z);
+                Material activeMaterial = Mathf.FloorToInt(z / 80f) % 2 == 0 ? frameMaterial : pulseMaterial;
+                AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Top Slash", new Vector3(0f, height * 0.5f, 0f), new Vector3(width, 0.08f, 0.18f), activeMaterial);
+                AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Bottom Slash", new Vector3(0f, -height * 0.5f, 0f), new Vector3(width, 0.08f, 0.18f), activeMaterial);
+                AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Left Slash", new Vector3(-width * 0.5f, 0f, 0f), new Vector3(0.08f, height, 0.18f), activeMaterial);
+                AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Right Slash", new Vector3(width * 0.5f, 0f, 0f), new Vector3(0.08f, height, 0.18f), activeMaterial);
+
+                if (z > 120f && z < courseLength - 80f && Mathf.FloorToInt(z / 20f) % 3 == 0)
+                {
+                    float x = Mathf.Sin(z * 0.11f) * boundary.x * 1.7f;
+                    float y = Mathf.Cos(z * 0.08f) * boundary.y * 1.3f;
+                    GameObject shard = AddPrimitive(parent, PrimitiveType.Cube, "Acheron Distant Shard", new Vector3(x, y, z + 6f), new Vector3(0.16f, 1.7f, 5.4f), shardMaterial);
+                    shard.transform.rotation = Quaternion.Euler(0f, 0f, z % 360f);
+                }
+            }
+
+            for (float z = 40f; z <= courseLength; z += 54f)
+            {
+                float x = Mathf.Sin(z * 0.047f) * boundary.x * 1.1f;
+                AddPrimitive(parent, PrimitiveType.Cube, "Acheron Abyss Plate", new Vector3(x, -boundary.y - 3.8f, z), new Vector3(boundary.x * 2.2f, 0.9f, 14f), voidMaterial);
             }
         }
 

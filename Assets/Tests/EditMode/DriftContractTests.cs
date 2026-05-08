@@ -1,8 +1,10 @@
 #if UNITY_INCLUDE_TESTS && DRIFT_ENABLE_UNITY_TESTS
 using System;
 using System.Collections;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using Drift;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -46,7 +48,7 @@ public sealed class DriftContractTests
         IEnumerable levelEnumerable = (IEnumerable)getLevels.Invoke(null, null);
         Assert.That(levelEnumerable, Is.Not.Null);
         object[] levels = levelEnumerable.Cast<object>().ToArray();
-        Assert.That(levels.Length, Is.GreaterThanOrEqualTo(7));
+        Assert.That(levels.Length, Is.GreaterThanOrEqualTo(8));
         Assert.That(levels.Any(level => (bool)GetField(level, "IsTutorial")), Is.True);
 
         int portalCount = 0;
@@ -66,7 +68,7 @@ public sealed class DriftContractTests
             Assert.That(rings.Count, Is.GreaterThanOrEqualTo(10), $"{displayName} should have a substantial ring route.");
         }
 
-        Assert.That(portalCount, Is.GreaterThanOrEqualTo(10));
+        Assert.That(portalCount, Is.GreaterThanOrEqualTo(20));
     }
 
     [Test]
@@ -89,6 +91,132 @@ public sealed class DriftContractTests
                 Assert.That(kind.ToString(), Does.Not.Contain("Inverted"));
             }
         }
+    }
+
+    [Test]
+    public void LevelSevenFinalPortalsAreClearlySeparatedFromRings()
+    {
+        LevelDefinition level = LevelCatalog.GetLevels().Single(candidate => candidate.LevelNumber == 7);
+
+        foreach (PortalSpec portal in level.Portals.Where(portal => portal.Position.z >= 230f))
+        {
+            foreach (RingSpec ring in level.Rings.Where(ring => ring.Position.z >= 220f))
+            {
+                float separation = Mathf.Abs(portal.Position.z - ring.Position.z);
+                Assert.That(separation, Is.GreaterThanOrEqualTo(10f), $"Portal {portal.Kind} at z{portal.Position.z} is too close to ring at z{ring.Position.z}.");
+            }
+        }
+    }
+
+    [Test]
+    public void RingPassWindowRequiresCenterlineAndPlaneAlignment()
+    {
+        GameObject ringObject = new GameObject("Ring Check");
+        try
+        {
+            RingCheckpoint ring = ringObject.AddComponent<RingCheckpoint>();
+            ring.Configure(0, 1.4f, 1.65f, null, Array.Empty<Renderer>(), null, null, null);
+
+            Assert.That(ring.IsInsidePassWindow(new Vector3(1.39f, 0f, 0f)), Is.True);
+            Assert.That(ring.IsInsidePassWindow(new Vector3(1.41f, 0f, 0f)), Is.False);
+            Assert.That(ring.IsInsidePassWindow(new Vector3(0f, 0f, 1.66f)), Is.False);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(ringObject);
+        }
+    }
+
+    [Test]
+    public void PortalMissPlaneRequiresPassingThroughPortal()
+    {
+        GameObject portalObject = new GameObject("Portal Check");
+        try
+        {
+            SpeedPortal portal = portalObject.AddComponent<SpeedPortal>();
+            portal.Configure(PortalKind.SpeedFast, 4f, null);
+
+            Assert.That(portal.IsConsumed, Is.False);
+            Assert.That(portal.IsPastMissPlane(new Vector3(0f, 0f, 2.9f), 3f), Is.False);
+            Assert.That(portal.IsPastMissPlane(new Vector3(0f, 0f, 3.1f), 3f), Is.True);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(portalObject);
+        }
+    }
+
+    [Test]
+    public void PortalVisualsUseCenterMeshWithoutOuterRing()
+    {
+        GameObject parent = new GameObject("Portal Parent");
+        try
+        {
+            PortalBase portal = RuntimeVisualFactory.CreatePortal(parent.transform, new PortalSpec(0f, 0f, 12f, PortalKind.SpeedSlow, 2.2f, 4f));
+            Transform portalTransform = portal.transform;
+
+            Assert.That(portalTransform.Cast<Transform>().Count(child => child.name == "Portal Segment"), Is.Zero);
+            Assert.That(portalTransform.GetComponentsInChildren<TextMesh>().Length, Is.Zero);
+            Assert.That(portalTransform.Find("Portal Inner Mesh Ring"), Is.Not.Null);
+            Assert.That(portalTransform.GetComponentsInChildren<Renderer>().Any(renderer => renderer.name.Contains("Portal Slow Pause Bar")), Is.True);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(parent);
+        }
+    }
+
+    [Test]
+    public void AcheronIsEighthLongestAndHardestSoundtrackLevel()
+    {
+        LevelDefinition[] levels = LevelCatalog.GetLevels().ToArray();
+        LevelDefinition acheron = levels.Single(level => level.LevelNumber == 8);
+
+        Assert.That(acheron.DisplayName, Is.EqualTo("Acheron"));
+        Assert.That((string)GetField(acheron, "SoundtrackPath"), Is.EqualTo("Soundtracks/Acheron.mp3"));
+        Assert.That((float)GetField(acheron, "SoundtrackDuration"), Is.InRange(76.0f, 76.3f));
+        Assert.That((bool)GetField(acheron, "SuppressGameplaySoundEffects"), Is.True);
+
+        float acheronEndZ = acheron.Rings.Max(ring => ring.Position.z);
+        float previousEndZ = levels.Where(level => level.LevelNumber < 8).Max(level => level.Rings.Max(ring => ring.Position.z));
+        int previousObstacleMax = levels.Where(level => level.LevelNumber < 8).Max(level => level.Obstacles.Length);
+        float previousSmallestRing = levels.Where(level => level.LevelNumber < 8).Min(level => level.Rings.Min(ring => ring.Radius));
+
+        Assert.That(acheron.Rings.Length, Is.GreaterThanOrEqualTo(36));
+        Assert.That(acheron.Portals.Length, Is.GreaterThanOrEqualTo(14));
+        Assert.That(acheron.Obstacles.Length, Is.GreaterThan(previousObstacleMax));
+        Assert.That(acheronEndZ, Is.GreaterThan(previousEndZ));
+        Assert.That(acheron.Rings.Min(ring => ring.Radius), Is.LessThan(previousSmallestRing));
+
+        Assert.That(acheron.Portals.Any(portal => portal.Kind == PortalKind.SpeedFast), Is.True);
+        Assert.That(acheron.Portals.Any(portal => portal.Kind == PortalKind.SpeedSlow), Is.True);
+        Assert.That(acheron.Portals.Any(portal => portal.Kind == PortalKind.SpeedNormal), Is.True);
+        Assert.That(acheron.Portals.Any(portal => portal.Kind == PortalKind.GravitySideways), Is.True);
+        Assert.That(acheron.Portals.Any(portal => portal.Kind == PortalKind.GravityNormal), Is.True);
+        Assert.That(acheron.Portals.Any(portal => portal.Kind == PortalKind.SizeSmall), Is.True);
+        Assert.That(acheron.Portals.Any(portal => portal.Kind == PortalKind.SizeNormal), Is.True);
+    }
+
+    [Test]
+    public void AcheronSoundtrackFileExistsAtAuthoredPath()
+    {
+        LevelDefinition acheron = LevelCatalog.GetLevels().Single(level => level.LevelNumber == 8);
+        string soundtrackPath = (string)GetField(acheron, "SoundtrackPath");
+        string absolutePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), soundtrackPath));
+
+        Assert.That(File.Exists(absolutePath), Is.True, $"{soundtrackPath} should exist at the authored project-relative path.");
+    }
+
+    [Test]
+    public void ArrowKeysAreNotBoundToGameplayInput()
+    {
+        string controllerPath = Path.Combine(Directory.GetCurrentDirectory(), "Assets/Scripts/DroneController.cs");
+        string source = File.ReadAllText(controllerPath);
+
+        Assert.That(source, Does.Not.Contain("KeyCode.LeftArrow"));
+        Assert.That(source, Does.Not.Contain("KeyCode.RightArrow"));
+        Assert.That(source, Does.Not.Contain("KeyCode.UpArrow"));
+        Assert.That(source, Does.Not.Contain("KeyCode.DownArrow"));
     }
 
     [Test]

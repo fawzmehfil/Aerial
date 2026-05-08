@@ -22,7 +22,7 @@ namespace Drift
             CreateLighting();
             CreateCourseFrame(level);
 
-            GameObject droneObject = RuntimeVisualFactory.CreateDrone(new Vector3(0f, 0f, 0f), level.ForwardSpeed, level.Boundary);
+            GameObject droneObject = RuntimeVisualFactory.CreateDrone(new Vector3(0f, 0f, 0f), level.ForwardSpeed, level.Boundary, level.SuppressGameplaySoundEffects);
             droneObject.transform.SetParent(currentLevelRoot.transform, true);
             currentDrone = droneObject.GetComponent<DroneController>();
             cameraFollow.SetTarget(currentDrone);

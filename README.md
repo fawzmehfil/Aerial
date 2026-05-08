@@ -4,7 +4,7 @@
   <img src="Assets/Logos/aerial.png" alt="cfr_poker_logo" width="220" />
 </div>
 
-Aerial is a Unity 3D space-arcade drone racing game. The drone moves forward automatically at fixed authored speed while the player controls horizontal and vertical positioning, burst movement, and stylish snap rolls to pass through neon checkpoint rings, portals, and readable obstacle sections.
+Aerial is a Unity 3D space-arcade drone racing game. The drone moves forward automatically at fixed authored speed while the player controls horizontal and vertical positioning to pass through neon checkpoint rings, portals, and readable obstacle sections.
 
 ## Unity Version
 
@@ -63,10 +63,6 @@ git status --short
 - `S`: move down
 - `A`: move left
 - `D`: move right
-- `Left Arrow`: snap roll left with a short lateral burst
-- `Right Arrow`: snap roll right with a short lateral burst
-- `Up Arrow`: quick rise burst
-- `Down Arrow`: quick dive burst
 - `R`: restart current level
 - `Esc`: pause, resume, or return from level select
 
@@ -76,13 +72,14 @@ There is no throttle, braking, or manual forward movement. Forward speed is fixe
 
 The project includes an expanded accessible level set:
 
-1. Tutorial - Launch Sequence: safe onboarding for movement, ring order, arrows, portals, restart, and pause.
+1. Tutorial - Launch Sequence: safe onboarding for movement, ring order, portals, restart, and pause.
 2. Lightline Atrium: minimal white-light tunnel inspired by architectural corridor references.
 3. Cyan Velocity Hall: cyan/magenta sci-fi corridor with speed portals.
 4. Red Gate Foundry: industrial red rectangular gate course with wall and pillar hazards.
 5. Cosmic Ring Void: open starfield ring tunnel with alien silhouettes and debris.
 6. Sideways Spiral: sparse orientation portal set piece.
 7. Aerial Expedition: longer mixed adventure course with corridor, void, portal chain, speed/size shifts, and final challenge.
+8. Acheron: the longest and most difficult full-track gauntlet, using `Soundtracks/Acheron.mp3` from start to finish with gameplay sound effects suppressed.
 
 ## Adding Levels
 
@@ -97,17 +94,18 @@ Each level defines:
 - Ordered `RingSpec` positions and radii
 - Optional `ObstacleSpec` positions and sizes
 - Optional `PortalSpec` positions, types, radii, and durations
+- Optional soundtrack path, soundtrack duration, and per-level gameplay SFX suppression
 
 The runtime managers generate the ring meshes, pass triggers, portal geometry, obstacle geometry, guide rails, theme environments, particles, drone, camera target, and UI from that data.
 
 ## Architecture
 
-- `DroneController`: fixed forward movement, WASD positioning, arrow burst abilities, portal-applied speed/orientation/size effects, smoothing, damping, boundary checks, hitbox scaling, and visual tilt.
+- `DroneController`: fixed forward movement, WASD positioning, portal-applied speed/orientation/size effects, smoothing, damping, boundary checks, hitbox scaling, and visual tilt.
 - `CameraFollow`: smooth chase camera, orientation roll following, and subtle FOV response to lateral and portal speed changes.
 - `RingCheckpoint`: individual ring trigger and visual state.
 - `RingManager`: ordered checkpoint progression, miss detection, and ring progress.
 - `LevelManager`: builds and resets levels from `LevelDefinition` data.
-- `GameManager`: game state, pause/restart/failure/completion, audio feedback, and progression.
+- `GameManager`: game state, pause/restart/failure/completion, soundtrack playback, audio feedback, and progression.
 - `PortalBase`, `SpeedPortal`, `GravityPortal`, `SizePortal`, `PortalManager`: reusable authored portal system.
 - `UIManager`: package-free runtime main menu, tutorial entry, level select, settings, HUD portal indicators, pause, failure, and completion panels.
 - `LevelSelectManager`: all-level selection and completed/tutorial button state.

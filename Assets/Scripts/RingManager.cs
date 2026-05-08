@@ -75,6 +75,11 @@ namespace Drift
             }
 
             RingCheckpoint currentRing = rings[currentRingIndex];
+            if (currentRing.TryPass(drone))
+            {
+                return;
+            }
+
             if (currentRing.IsPastMissPlane(drone.transform.position, missThreshold))
             {
                 currentRing.PlayMissEffect();
