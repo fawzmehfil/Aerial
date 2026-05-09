@@ -559,23 +559,31 @@ namespace Drift
         {
             Material frameMaterial = CreateNeonMaterial("Acheron Bone Frame", new Color(0.92f, 0.94f, 1f), 2.8f, true);
             Material pulseMaterial = CreateNeonMaterial("Acheron Red Pulse", new Color(1f, 0.08f, 0.12f), 3.2f, true);
+            Material emberMaterial = CreateNeonMaterial("Acheron Ember Edge", new Color(1f, 0.48f, 0.12f), 2.1f, true);
             Material shardMaterial = CreateNeonMaterial("Acheron Violet Shard", new Color(0.48f, 0.12f, 0.95f), 1.6f, true);
             Material voidMaterial = CreateNeonMaterial("Acheron Void Plate", new Color(0.035f, 0.026f, 0.052f), 0.2f);
 
             float width = boundary.x * 2.34f;
             float height = boundary.y * 2.34f;
-            for (float z = 0f; z <= courseLength; z += 20f)
+            for (float z = 0f; z <= courseLength; z += 14f)
             {
                 GameObject frame = new GameObject("Acheron Pulse Frame");
                 frame.transform.SetParent(parent, false);
                 frame.transform.position = new Vector3(0f, 0f, z);
-                Material activeMaterial = Mathf.FloorToInt(z / 80f) % 2 == 0 ? frameMaterial : pulseMaterial;
+                Material activeMaterial = Mathf.FloorToInt(z / 56f) % 2 == 0 ? frameMaterial : pulseMaterial;
                 AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Top Slash", new Vector3(0f, height * 0.5f, 0f), new Vector3(width, 0.08f, 0.18f), activeMaterial);
                 AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Bottom Slash", new Vector3(0f, -height * 0.5f, 0f), new Vector3(width, 0.08f, 0.18f), activeMaterial);
                 AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Left Slash", new Vector3(-width * 0.5f, 0f, 0f), new Vector3(0.08f, height, 0.18f), activeMaterial);
                 AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Right Slash", new Vector3(width * 0.5f, 0f, 0f), new Vector3(0.08f, height, 0.18f), activeMaterial);
 
-                if (z > 120f && z < courseLength - 80f && Mathf.FloorToInt(z / 20f) % 3 == 0)
+                if (Mathf.FloorToInt(z / 14f) % 2 == 0)
+                {
+                    float fangY = Mathf.Sin(z * 0.037f) * boundary.y * 0.22f;
+                    AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Left Beat Tooth", new Vector3(-width * 0.5f - 0.34f, fangY, 1.5f), new Vector3(0.2f, height * 0.34f, 0.42f), emberMaterial);
+                    AddPrimitive(frame.transform, PrimitiveType.Cube, "Acheron Right Beat Tooth", new Vector3(width * 0.5f + 0.34f, -fangY, -1.5f), new Vector3(0.2f, height * 0.34f, 0.42f), emberMaterial);
+                }
+
+                if (z > 96f && z < courseLength - 60f && Mathf.FloorToInt(z / 14f) % 3 == 0)
                 {
                     float x = Mathf.Sin(z * 0.11f) * boundary.x * 1.7f;
                     float y = Mathf.Cos(z * 0.08f) * boundary.y * 1.3f;
@@ -584,10 +592,28 @@ namespace Drift
                 }
             }
 
-            for (float z = 40f; z <= courseLength; z += 54f)
+            float[] phaseGates = { 210f, 398f, 638f, 870f, 1142f, 1328f, 1514f, 1726f };
+            foreach (float z in phaseGates)
+            {
+                if (z > courseLength)
+                {
+                    continue;
+                }
+
+                GameObject gate = new GameObject("Acheron Music Phase Gate");
+                gate.transform.SetParent(parent, false);
+                gate.transform.position = new Vector3(0f, 0f, z);
+                AddPrimitive(gate.transform, PrimitiveType.Cube, "Acheron Phase Crown", new Vector3(0f, height * 0.5f + 0.42f, 0f), new Vector3(width * 0.52f, 0.16f, 1.3f), emberMaterial);
+                AddPrimitive(gate.transform, PrimitiveType.Cube, "Acheron Phase Crown", new Vector3(0f, -height * 0.5f - 0.42f, 0f), new Vector3(width * 0.52f, 0.16f, 1.3f), emberMaterial);
+                AddPrimitive(gate.transform, PrimitiveType.Cube, "Acheron Phase Needle", new Vector3(-width * 0.5f - 0.82f, 0f, 0f), new Vector3(0.16f, height * 0.76f, 1.1f), pulseMaterial);
+                AddPrimitive(gate.transform, PrimitiveType.Cube, "Acheron Phase Needle", new Vector3(width * 0.5f + 0.82f, 0f, 0f), new Vector3(0.16f, height * 0.76f, 1.1f), pulseMaterial);
+            }
+
+            for (float z = 28f; z <= courseLength; z += 34f)
             {
                 float x = Mathf.Sin(z * 0.047f) * boundary.x * 1.1f;
-                AddPrimitive(parent, PrimitiveType.Cube, "Acheron Abyss Plate", new Vector3(x, -boundary.y - 3.8f, z), new Vector3(boundary.x * 2.2f, 0.9f, 14f), voidMaterial);
+                AddPrimitive(parent, PrimitiveType.Cube, "Acheron Abyss Plate", new Vector3(x, -boundary.y - 3.8f, z), new Vector3(boundary.x * 2.2f, 0.9f, 13f), voidMaterial);
+                AddPrimitive(parent, PrimitiveType.Cube, "Acheron Ceiling Scar", new Vector3(-x * 0.65f, boundary.y + 4.15f, z + 8f), new Vector3(boundary.x * 1.25f, 0.34f, 9f), shardMaterial);
             }
         }
 

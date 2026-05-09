@@ -286,6 +286,27 @@ namespace Drift
             pendingSoundtrackStartTime = 0f;
         }
 
+        public void RefreshPracticeCheckpointAfterPortal(PortalBase portal, DroneController drone)
+        {
+            if (!practiceMode || portal == null || drone == null || currentPracticeCheckpoint.DroneSnapshot.Position == default)
+            {
+                return;
+            }
+
+            if (portal.ZPosition > currentPracticeCheckpoint.Position.z + 0.05f)
+            {
+                return;
+            }
+
+            DronePracticeSnapshot snapshot = drone.CapturePracticeSnapshot();
+            snapshot.Position = currentPracticeCheckpoint.Position;
+            currentPracticeCheckpoint = new PracticeCheckpoint(
+                currentPracticeCheckpoint.CheckpointNumber,
+                currentPracticeCheckpoint.NextRingIndex,
+                currentPracticeCheckpoint.SoundtrackTime,
+                snapshot);
+        }
+
         public void ShowPortalEffect(string label, float duration)
         {
             uiManager.ShowPortalEffect(label, duration);

@@ -261,114 +261,159 @@ namespace Drift
             return new LevelDefinition(
                 8,
                 "Acheron",
-                "A full-track extreme gauntlet shaped around Acheron's intro ramp, first drop, mid-song pressure, second drop, and fading outro.",
-                25f,
-                new Vector2(9.8f, 6.6f),
+                "A full-track extreme gauntlet cut tightly to Acheron's ramp, twin drops, sideways breaks, and fading outro.",
+                26.5f,
+                new Vector2(10.2f, 6.9f),
                 EnvironmentTheme.AcheronAbyss,
                 new[]
                 {
-                    new RingSpec(0f, 0f, 30f, 2.15f),
-                    new RingSpec(-2.8f, 1.2f, 80f, 2f),
-                    new RingSpec(2.9f, -1.3f, 135f, 1.95f),
-                    new RingSpec(0f, 0f, 175f, 1.9f),
-                    new RingSpec(-3.8f, 2.2f, 227f, 1.75f),
-                    new RingSpec(3.9f, -2.1f, 279f, 1.7f),
-                    new RingSpec(-4.4f, -0.6f, 348f, 1.65f),
-                    new RingSpec(0f, 2.8f, 416f, 1.8f),
-                    new RingSpec(3.2f, 1.8f, 451f, 1.75f),
-                    new RingSpec(-3.2f, -1.8f, 485f, 1.7f),
-                    new RingSpec(0f, -3.2f, 535f, 1.65f),
-                    new RingSpec(0f, 0f, 585f, 1.75f),
-                    new RingSpec(4.3f, 2.4f, 654f, 1.55f),
-                    new RingSpec(-4.4f, 1.6f, 723f, 1.5f),
-                    new RingSpec(4.2f, -2.6f, 792f, 1.5f),
-                    new RingSpec(-4.1f, -2.4f, 861f, 1.48f),
-                    new RingSpec(0f, 0f, 895f, 1.65f),
-                    new RingSpec(3.5f, 3f, 945f, 1.52f),
-                    new RingSpec(-3.7f, 2.6f, 995f, 1.48f),
-                    new RingSpec(0f, -3.2f, 1045f, 1.55f),
-                    new RingSpec(3.8f, -1.2f, 1079f, 1.45f),
-                    new RingSpec(-3.8f, 1.1f, 1113f, 1.45f),
-                    new RingSpec(0f, 0f, 1155f, 1.6f),
-                    new RingSpec(2.2f, 2.8f, 1205f, 1.55f),
-                    new RingSpec(0f, 0f, 1280f, 1.75f),
-                    new RingSpec(-4.6f, 0.8f, 1349f, 1.45f),
-                    new RingSpec(4.6f, -0.8f, 1418f, 1.45f),
-                    new RingSpec(-4.2f, -2.8f, 1487f, 1.42f),
-                    new RingSpec(4.2f, 2.8f, 1556f, 1.42f),
-                    new RingSpec(0f, 0f, 1625f, 1.6f),
-                    new RingSpec(-3f, 3.2f, 1675f, 1.5f),
-                    new RingSpec(3f, -3.2f, 1725f, 1.5f),
-                    new RingSpec(0f, 0f, 1750f, 1.75f),
-                    new RingSpec(-2.4f, -1.8f, 1784f, 1.65f),
-                    new RingSpec(2.4f, 1.8f, 1818f, 1.6f),
-                    new RingSpec(0f, 0f, 1869f, 1.8f),
-                    new RingSpec(-1.8f, 2.4f, 1919f, 1.65f),
-                    new RingSpec(1.8f, -2.4f, 1969f, 1.65f),
-                    new RingSpec(0f, 0f, 2023f, 2f)
+                    new RingSpec(0.0f, 0.0f, 28f, 2.15f),
+                    new RingSpec(-2.6f, 1.3f, 60f, 2.09f),
+                    new RingSpec(3.1f, -1.2f, 94f, 2.03f),
+                    new RingSpec(-4.4f, 2.5f, 132f, 1.97f),
+                    new RingSpec(4.7f, -2.7f, 172f, 1.91f),
+                    new RingSpec(-1.2f, -3.4f, 210f, 1.75f),
+                    new RingSpec(2.6f, 3.2f, 244f, 1.72f),
+                    new RingSpec(-5.1f, -0.4f, 278f, 1.69f),
+                    new RingSpec(5.2f, 0.6f, 312f, 1.65f),
+                    new RingSpec(-3.8f, -3.1f, 346f, 1.61f),
+                    new RingSpec(3.9f, 3.1f, 374f, 1.58f),
+                    new RingSpec(0.0f, 0.0f, 398f, 1.54f),
+                    new RingSpec(0.0f, 0.0f, 426f, 1.48f),
+                    new RingSpec(-2.6f, 1.3f, 454f, 1.46f),
+                    new RingSpec(3.1f, -1.2f, 482f, 1.44f),
+                    new RingSpec(-4.4f, 2.5f, 510f, 1.42f),
+                    new RingSpec(4.7f, -2.7f, 538f, 1.40f),
+                    new RingSpec(-1.2f, -3.4f, 566f, 1.38f),
+                    new RingSpec(2.6f, 3.2f, 596f, 1.36f),
+                    new RingSpec(-5.5f, -0.4f, 638f, 1.34f),
+                    new RingSpec(5.6f, 0.6f, 660f, 1.48f),
+                    new RingSpec(-4.1f, -3.3f, 690f, 1.46f),
+                    new RingSpec(4.2f, 3.3f, 720f, 1.44f),
+                    new RingSpec(0.0f, 0.0f, 750f, 1.42f),
+                    new RingSpec(0.0f, 0.0f, 780f, 1.40f),
+                    new RingSpec(-2.8f, 1.4f, 810f, 1.38f),
+                    new RingSpec(3.3f, -1.3f, 840f, 1.31f),
+                    new RingSpec(-4.8f, 2.6f, 870f, 1.42f),
+                    new RingSpec(5.1f, -2.8f, 895f, 1.40f),
+                    new RingSpec(-1.3f, -3.6f, 922f, 1.38f),
+                    new RingSpec(2.8f, 3.4f, 952f, 1.37f),
+                    new RingSpec(-5.5f, -0.4f, 982f, 1.35f),
+                    new RingSpec(5.6f, 0.6f, 1012f, 1.33f),
+                    new RingSpec(-3.8f, -3.1f, 1044f, 1.31f),
+                    new RingSpec(3.9f, 3.1f, 1076f, 1.42f),
+                    new RingSpec(0.0f, 0.0f, 1108f, 1.40f),
+                    new RingSpec(0.0f, 0.0f, 1142f, 1.38f),
+                    new RingSpec(-2.6f, 1.3f, 1174f, 1.37f),
+                    new RingSpec(3.1f, -1.2f, 1206f, 1.35f),
+                    new RingSpec(-4.4f, 2.5f, 1238f, 1.33f),
+                    new RingSpec(4.7f, -2.7f, 1270f, 1.31f),
+                    new RingSpec(-1.3f, -3.7f, 1302f, 1.34f),
+                    new RingSpec(2.9f, 3.5f, 1328f, 1.33f),
+                    new RingSpec(-5.7f, -0.4f, 1358f, 1.28f),
+                    new RingSpec(5.8f, 0.7f, 1388f, 1.30f),
+                    new RingSpec(-4.3f, -3.4f, 1418f, 1.29f),
+                    new RingSpec(4.4f, 3.4f, 1448f, 1.28f),
+                    new RingSpec(0.0f, 0.0f, 1478f, 1.27f),
+                    new RingSpec(0.0f, 0.0f, 1514f, 1.28f),
+                    new RingSpec(-2.9f, 1.4f, 1538f, 1.34f),
+                    new RingSpec(3.5f, -1.3f, 1568f, 1.33f),
+                    new RingSpec(-4.9f, 2.8f, 1598f, 1.32f),
+                    new RingSpec(5.3f, -3.0f, 1628f, 1.28f),
+                    new RingSpec(-1.3f, -3.7f, 1658f, 1.29f),
+                    new RingSpec(2.9f, 3.5f, 1688f, 1.28f),
+                    new RingSpec(-5.7f, -0.4f, 1726f, 1.27f),
+                    new RingSpec(3.7f, 0.4f, 1748f, 1.55f),
+                    new RingSpec(-2.7f, -2.2f, 1784f, 1.60f),
+                    new RingSpec(2.8f, 2.2f, 1820f, 1.66f),
+                    new RingSpec(0.0f, 0.0f, 1856f, 1.72f),
+                    new RingSpec(0.0f, 0.0f, 1892f, 1.77f),
+                    new RingSpec(-1.9f, 0.9f, 1930f, 1.83f),
+                    new RingSpec(2.2f, -0.9f, 1964f, 1.55f),
+                    new RingSpec(-3.2f, 1.8f, 1992f, 1.60f),
+                    new RingSpec(3.4f, -1.9f, 2023f, 1.66f)
                 },
+                CreateAcheronObstacles(),
                 new[]
                 {
-                    new ObstacleSpec(new Vector3(0f, -5.1f, 62f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(-6.6f, 0.4f, 110f), new Vector3(1.1f, 8.2f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(6.6f, -0.4f, 158f), new Vector3(1.1f, 8.2f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(0f, 5.25f, 205f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(0.5f, 0f, 246f), new Vector3(1.1f, 7.4f, 5f), ObstacleKind.Pillar, 10f),
-                    new ObstacleSpec(new Vector3(0f, -5.2f, 302f), new Vector3(16f, 0.85f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(6.3f, 0.2f, 348f), new Vector3(1.1f, 8.1f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(-6.3f, -0.3f, 390f), new Vector3(1.1f, 8.1f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(0f, 5.25f, 446f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(0f, -5.2f, 472f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(-6.2f, 0f, 535f), new Vector3(1.1f, 8.4f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(6.2f, 0f, 560f), new Vector3(1.1f, 8.4f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(0f, 5.3f, 620f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(0f, -2.4f, 675f), new Vector3(1.7f, 1.5f, 1.7f), ObstacleKind.CosmicDebris, 31f),
-                    new ObstacleSpec(new Vector3(0f, 5.1f, 728f), new Vector3(15f, 0.75f, 5f), ObstacleKind.WallPanel, 7f),
-                    new ObstacleSpec(new Vector3(-6.4f, -0.4f, 780f), new Vector3(1f, 8.2f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(6.4f, 0.4f, 835f), new Vector3(1f, 8.2f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(0f, -5.25f, 900f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(0f, 0f, 972f), new Vector3(1.6f, 1.3f, 1.6f), ObstacleKind.CosmicDebris, 82f),
-                    new ObstacleSpec(new Vector3(5.9f, -0.5f, 1020f), new Vector3(1f, 8.4f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(-5.9f, 0.5f, 1068f), new Vector3(1f, 8.4f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(0f, 5.1f, 1118f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(0f, -5.1f, 1185f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(-3.9f, -3.2f, 1320f), new Vector3(1.4f, 1.5f, 1.4f), ObstacleKind.CosmicDebris, 114f),
-                    new ObstacleSpec(new Vector3(4.1f, 3.1f, 1376f), new Vector3(1.4f, 1.5f, 1.4f), ObstacleKind.CosmicDebris, 149f),
-                    new ObstacleSpec(new Vector3(0f, 5.2f, 1436f), new Vector3(16f, 0.75f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(0f, -5.2f, 1498f), new Vector3(16f, 0.75f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(-6.3f, 0.2f, 1546f), new Vector3(1f, 8.1f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(6.3f, -0.2f, 1596f), new Vector3(1f, 8.1f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(0f, 0f, 1662f), new Vector3(1.7f, 1.2f, 1.7f), ObstacleKind.CosmicDebris, 205f),
-                    new ObstacleSpec(new Vector3(-6.1f, 0f, 1712f), new Vector3(1f, 8.2f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(6.1f, 0f, 1764f), new Vector3(1f, 8.2f, 5f), ObstacleKind.Pillar),
-                    new ObstacleSpec(new Vector3(0f, 5.1f, 1812f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(0f, -5.1f, 1878f), new Vector3(16f, 0.8f, 5f), ObstacleKind.WallPanel),
-                    new ObstacleSpec(new Vector3(0f, 0f, 1942f), new Vector3(1.5f, 1.5f, 1.5f), ObstacleKind.CosmicDebris, 278f)
-                },
-                new[]
-                {
-                    new PortalSpec(0f, 0f, 175f, PortalKind.SpeedFast, 2.05f, 7f),
-                    new PortalSpec(-3.8f, 2.2f, 227f, PortalKind.SizeSmall, 1.95f, 6f),
-                    new PortalSpec(0f, 2.8f, 416f, PortalKind.SpeedSlow, 2f, 4f),
-                    new PortalSpec(0f, 2.8f, 421f, PortalKind.SizeNormal, 2f, 0f),
-                    new PortalSpec(0f, 0f, 585f, PortalKind.SpeedFast, 2.05f, 9f),
-                    new PortalSpec(4.3f, 2.4f, 654f, PortalKind.GravitySideways, 1.95f, 0f),
-                    new PortalSpec(0f, 0f, 895f, PortalKind.SpeedNormal, 2.05f, 0f),
-                    new PortalSpec(0f, 0f, 900f, PortalKind.GravityNormal, 2.05f, 0f),
-                    new PortalSpec(0f, -3.2f, 1045f, PortalKind.SpeedSlow, 1.95f, 5f),
-                    new PortalSpec(3.8f, -1.2f, 1079f, PortalKind.SizeSmall, 1.9f, 6f),
-                    new PortalSpec(0f, 0f, 1155f, PortalKind.SpeedNormal, 2f, 0f),
-                    new PortalSpec(2.2f, 2.8f, 1205f, PortalKind.SizeNormal, 1.95f, 0f),
-                    new PortalSpec(0f, 0f, 1280f, PortalKind.SpeedFast, 2.05f, 10f),
-                    new PortalSpec(4.6f, -0.8f, 1418f, PortalKind.GravitySideways, 1.9f, 0f),
-                    new PortalSpec(0f, 0f, 1625f, PortalKind.SpeedNormal, 2.05f, 0f),
-                    new PortalSpec(0f, 0f, 1630f, PortalKind.GravityNormal, 2.05f, 0f),
-                    new PortalSpec(0f, 0f, 1750f, PortalKind.SpeedSlow, 2.05f, 7f),
-                    new PortalSpec(0f, 0f, 1869f, PortalKind.SpeedNormal, 2.05f, 0f)
+                    new PortalSpec(-1.2f, -3.4f, 210f, PortalKind.SpeedFast, 2.1f, 6f),
+                    new PortalSpec(-5.1f, -0.4f, 278f, PortalKind.SizeSmall, 1.95f, 6f),
+                    new PortalSpec(0f, 0f, 398f, PortalKind.SpeedFast, 2.05f, 8f),
+                    new PortalSpec(0f, 0f, 426f, PortalKind.SizeNormal, 2f, 0f),
+                    new PortalSpec(4.7f, -2.7f, 538f, PortalKind.SpeedSlow, 1.95f, 4f),
+                    new PortalSpec(2.6f, 3.2f, 596f, PortalKind.SpeedNormal, 2f, 0f),
+                    new PortalSpec(-5.5f, -0.4f, 638f, PortalKind.GravitySideways, 1.9f, 0f),
+                    new PortalSpec(4.2f, 3.3f, 720f, PortalKind.SizeSmall, 1.88f, 7f),
+                    new PortalSpec(3.3f, -1.3f, 840f, PortalKind.GravityNormal, 2f, 0f),
+                    new PortalSpec(-4.8f, 2.6f, 870f, PortalKind.SpeedFast, 1.95f, 7f),
+                    new PortalSpec(-5.5f, -0.4f, 982f, PortalKind.SpeedSlow, 1.9f, 4f),
+                    new PortalSpec(5.6f, 0.6f, 1012f, PortalKind.SizeNormal, 2f, 0f),
+                    new PortalSpec(3.9f, 3.1f, 1076f, PortalKind.SpeedNormal, 2.05f, 0f),
+                    new PortalSpec(0f, 0f, 1142f, PortalKind.SpeedSlow, 2.05f, 5f),
+                    new PortalSpec(-2.6f, 1.3f, 1174f, PortalKind.SizeSmall, 1.9f, 6f),
+                    new PortalSpec(-4.4f, 2.5f, 1238f, PortalKind.SpeedNormal, 2f, 0f),
+                    new PortalSpec(2.9f, 3.5f, 1328f, PortalKind.SpeedFast, 2.05f, 9f),
+                    new PortalSpec(-5.7f, -0.4f, 1358f, PortalKind.GravitySideways, 1.9f, 0f),
+                    new PortalSpec(-4.3f, -3.4f, 1418f, PortalKind.SizeNormal, 1.95f, 0f),
+                    new PortalSpec(0f, 0f, 1478f, PortalKind.GravityNormal, 2.05f, 0f),
+                    new PortalSpec(0f, 0f, 1514f, PortalKind.GravitySideways, 1.9f, 0f),
+                    new PortalSpec(3.5f, -1.3f, 1568f, PortalKind.SpeedFast, 2.05f, 8f),
+                    new PortalSpec(5.3f, -3.0f, 1628f, PortalKind.SizeSmall, 1.85f, 7f),
+                    new PortalSpec(2.9f, 3.5f, 1688f, PortalKind.GravityNormal, 2.05f, 0f),
+                    new PortalSpec(-5.7f, -0.4f, 1726f, PortalKind.SpeedSlow, 2.1f, 7f),
+                    new PortalSpec(-2.7f, -2.2f, 1784f, PortalKind.SizeNormal, 2.05f, 0f),
+                    new PortalSpec(2.8f, 2.2f, 1820f, PortalKind.SpeedNormal, 2.1f, 0f),
+                    new PortalSpec(0f, 0f, 1892f, PortalKind.SpeedSlow, 2.2f, 4f),
+                    new PortalSpec(2.2f, -0.9f, 1964f, PortalKind.SpeedNormal, 2.2f, 0f),
+                    new PortalSpec(-3.2f, 1.8f, 1992f, PortalKind.GravityNormal, 2.2f, 0f)
                 },
                 soundtrackPath: "Soundtracks/Acheron.mp3",
                 soundtrackDuration: 76.138f,
                 suppressGameplaySoundEffects: true);
+        }
+
+        private static ObstacleSpec[] CreateAcheronObstacles()
+        {
+            List<ObstacleSpec> obstacles = new List<ObstacleSpec>();
+            AddAcheronHazardRun(obstacles, 42f, 210f, 30f, 0, 0.35f);
+            AddAcheronHazardRun(obstacles, 225f, 426f, 24f, 1, 0.6f);
+            AddAcheronHazardRun(obstacles, 440f, 840f, 22f, 2, 0.82f);
+            AddAcheronHazardRun(obstacles, 860f, 1270f, 23f, 3, 0.72f);
+            AddAcheronHazardRun(obstacles, 1290f, 1726f, 20f, 4, 0.95f);
+            AddAcheronHazardRun(obstacles, 1742f, 1998f, 30f, 5, 0.45f);
+
+            return obstacles.ToArray();
+        }
+
+        private static void AddAcheronHazardRun(List<ObstacleSpec> obstacles, float startZ, float endZ, float spacing, int phase, float aggression)
+        {
+            int beat = 0;
+            for (float z = startZ; z <= endZ; z += spacing)
+            {
+                float side = (beat + phase) % 2 == 0 ? -1f : 1f;
+                float verticalSide = (beat + phase) % 3 == 0 ? 1f : -1f;
+                float pillarX = side * Mathf.Lerp(6.1f, 7.25f, aggression);
+                float pillarY = Mathf.Sin((z + phase * 19f) * 0.043f) * Mathf.Lerp(0.9f, 1.55f, aggression);
+                float panelY = verticalSide * Mathf.Lerp(5.1f, 5.7f, aggression);
+                float panelX = Mathf.Sin((z + phase * 11f) * 0.031f) * Mathf.Lerp(1.2f, 2.4f, aggression);
+
+                obstacles.Add(new ObstacleSpec(new Vector3(pillarX, pillarY, z), new Vector3(Mathf.Lerp(1.15f, 0.82f, aggression), Mathf.Lerp(7.2f, 8.9f, aggression), 4.5f), ObstacleKind.Pillar, side * Mathf.Lerp(3f, 10f, aggression)));
+                obstacles.Add(new ObstacleSpec(new Vector3(panelX, panelY, z + spacing * 0.45f), new Vector3(Mathf.Lerp(14.2f, 16.9f, aggression), Mathf.Lerp(0.88f, 0.62f, aggression), 4.2f), ObstacleKind.WallPanel, verticalSide * Mathf.Lerp(0f, 7f, aggression)));
+
+                if (aggression > 0.5f && beat % 2 == 0)
+                {
+                    float debrisX = -side * Mathf.Lerp(3.0f, 4.75f, aggression);
+                    float debrisY = -verticalSide * Mathf.Lerp(1.8f, 3.15f, aggression);
+                    obstacles.Add(new ObstacleSpec(new Vector3(debrisX, debrisY, z + spacing * 0.22f), new Vector3(Mathf.Lerp(1.55f, 1.05f, aggression), Mathf.Lerp(1.25f, 1.75f, aggression), Mathf.Lerp(1.65f, 1.1f, aggression)), ObstacleKind.CosmicDebris, (z * 0.73f + phase * 29f) % 360f));
+                }
+
+                if (aggression > 0.8f && beat % 3 == 1)
+                {
+                    obstacles.Add(new ObstacleSpec(new Vector3(side * 1.8f, -verticalSide * 4.35f, z + spacing * 0.72f), new Vector3(6.2f, 0.58f, 3.8f), ObstacleKind.WallPanel, -verticalSide * 14f));
+                }
+
+                beat++;
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ using System.Reflection;
 using Drift;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 public sealed class DriftContractTests
 {
@@ -200,6 +201,38 @@ public sealed class DriftContractTests
     }
 
     [Test]
+    public void AcheronHasDenseMusicSyncedUpgrade()
+    {
+        LevelDefinition acheron = LevelCatalog.GetLevels().Single(level => level.LevelNumber == 8);
+        float soundtrackDuration = (float)GetField(acheron, "SoundtrackDuration");
+        float zPerSecond = acheron.Rings.Max(ring => ring.Position.z) / soundtrackDuration;
+
+        Assert.That(acheron.Rings.Length, Is.GreaterThanOrEqualTo(64));
+        Assert.That(acheron.Obstacles.Length, Is.GreaterThanOrEqualTo(80));
+        Assert.That(acheron.Portals.Length, Is.GreaterThanOrEqualTo(28));
+        Assert.That(acheron.Rings.Min(ring => ring.Radius), Is.LessThanOrEqualTo(1.32f));
+
+        AssertPortalNear(acheron, PortalKind.SpeedFast, 8.0f, zPerSecond, 16f);
+        AssertPortalNear(acheron, PortalKind.SpeedFast, 15.0f, zPerSecond, 16f);
+        AssertPortalNear(acheron, PortalKind.GravitySideways, 24.0f, zPerSecond, 18f);
+        AssertPortalNear(acheron, PortalKind.SpeedSlow, 43.0f, zPerSecond, 18f);
+        AssertPortalNear(acheron, PortalKind.SpeedFast, 50.0f, zPerSecond, 18f);
+        AssertPortalNear(acheron, PortalKind.GravitySideways, 57.0f, zPerSecond, 18f);
+        AssertPortalNear(acheron, PortalKind.SpeedSlow, 65.0f, zPerSecond, 20f);
+
+        for (float sectionStart = 0f; sectionStart < 64f; sectionStart += 8f)
+        {
+            float zStart = sectionStart * zPerSecond;
+            float zEnd = (sectionStart + 8f) * zPerSecond;
+            int ringCount = acheron.Rings.Count(ring => ring.Position.z >= zStart && ring.Position.z < zEnd);
+            int obstacleCount = acheron.Obstacles.Count(obstacle => obstacle.Position.z >= zStart && obstacle.Position.z < zEnd);
+
+            Assert.That(ringCount, Is.GreaterThanOrEqualTo(5), $"Acheron should keep ring pressure during {sectionStart:0}-{sectionStart + 8f:0}s.");
+            Assert.That(obstacleCount, Is.GreaterThanOrEqualTo(7), $"Acheron should keep obstacle pressure during {sectionStart:0}-{sectionStart + 8f:0}s.");
+        }
+    }
+
+    [Test]
     public void AcheronSoundtrackFileExistsAtAuthoredPath()
     {
         LevelDefinition acheron = LevelCatalog.GetLevels().Single(level => level.LevelNumber == 8);
@@ -240,6 +273,61 @@ public sealed class DriftContractTests
         Assert.That(ringManager.GetMethod("SetCurrentRingIndex", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
         Assert.That(portalBase.GetMethod("ResetForPracticeRespawn", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
         Assert.That(runtimeVisualFactory.GetMethod("CreatePracticeCheckpointMarker", BindingFlags.Public | BindingFlags.Static), Is.Not.Null);
+    }
+
+    [Test]
+    public void PracticeSnapshotRestoresActivePortalModesAtEffectTargets()
+    {
+        ClearScene();
+        GameObject droneObject = RuntimeVisualFactory.CreateDrone(Vector3.zero, 20f, new Vector2(8f, 5f), true);
+        try
+        {
+            DroneController drone = droneObject.GetComponent<DroneController>();
+            drone.ApplySpeedMultiplier(1.38f, 7f, "SPEED UP");
+            drone.ApplyOrientation(90f, 0f, "SIDEWAYS GRAVITY");
+            drone.ApplySize(0.62f, 6f, "MINI DRONE");
+
+            DronePracticeSnapshot snapshot = drone.CapturePracticeSnapshot();
+            drone.ResetDrone();
+            drone.RestorePracticeSnapshot(snapshot);
+
+            Assert.That(drone.ForwardSpeed, Is.EqualTo(drone.DefaultForwardSpeed * 1.38f).Within(0.01f));
+            Assert.That(drone.OrientationRoll, Is.EqualTo(90f).Within(0.01f));
+            Assert.That(drone.SizeMultiplier, Is.EqualTo(0.62f).Within(0.01f));
+        }
+        finally
+        {
+            ClearScene();
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator PracticeCheckpointRefreshesWhenPortalTriggersAfterSamePlaneRing()
+    {
+        PlayerPrefs.DeleteKey(ProgressionService.HighestUnlockedLevelKey);
+        PlayerPrefs.DeleteKey(ProgressionService.CompletedLevelsKey);
+
+        ClearScene();
+        GameManager manager = GameManager.EnsureRuntime();
+        manager.StartPracticeLevel(8);
+        yield return null;
+
+        LevelManager levelManager = (LevelManager)GetField(manager, "levelManager");
+        DroneController drone = levelManager.CurrentDrone;
+        RingCheckpoint[] rings = UnityEngine.Object.FindObjectsByType<RingCheckpoint>(FindObjectsSortMode.None);
+        SpeedPortal speedPortal = UnityEngine.Object.FindObjectsByType<SpeedPortal>(FindObjectsSortMode.None)
+            .First(portal => rings.Any(ring => Mathf.Abs(ring.ZPosition - portal.ZPosition) < 0.01f));
+        RingCheckpoint speedRing = rings.Single(ring => Mathf.Abs(ring.ZPosition - speedPortal.ZPosition) < 0.01f);
+
+        drone.transform.position = speedPortal.transform.position;
+        manager.RecordPracticeCheckpoint(speedRing, speedRing.RingIndex + 1);
+        Assert.That(manager.CurrentPracticeCheckpoint.Position.z, Is.GreaterThan(speedPortal.ZPosition));
+
+        speedPortal.SendMessage("OnTriggerEnter", drone.GetComponent<Collider>(), SendMessageOptions.RequireReceiver);
+        yield return null;
+
+        Assert.That(manager.CurrentPracticeCheckpoint.DroneSnapshot.ForwardSpeed, Is.GreaterThan(drone.DefaultForwardSpeed * 1.2f));
+        ClearScene();
     }
 
     [Test]
@@ -329,6 +417,14 @@ public sealed class DriftContractTests
         FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Public | BindingFlags.Instance);
         Assert.That(field, Is.Not.Null, $"{target.GetType().Name}.{fieldName} should be public.");
         return field.GetValue(target);
+    }
+
+    private static void AssertPortalNear(LevelDefinition level, PortalKind kind, float seconds, float zPerSecond, float tolerance)
+    {
+        float targetZ = seconds * zPerSecond;
+        bool hasPortal = level.Portals.Any(portal => portal.Kind == kind && Mathf.Abs(portal.Position.z - targetZ) <= tolerance);
+
+        Assert.That(hasPortal, Is.True, $"{level.DisplayName} should place {kind} near {seconds:0.0}s / z{targetZ:0}.");
     }
 
     private static T Invoke<T>(object target, string methodName, params object[] args)

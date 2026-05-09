@@ -81,6 +81,7 @@ namespace Drift
             }
 
             Apply(drone, duration);
+            GameManager.Instance?.RefreshPracticeCheckpointAfterPortal(this, drone);
         }
     }
 }

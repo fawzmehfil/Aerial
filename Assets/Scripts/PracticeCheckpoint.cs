@@ -7,9 +7,11 @@ namespace Drift
         public Vector3 Position;
         public Quaternion Rotation;
         public float ForwardSpeed;
+        public float TargetForwardSpeed;
         public float OrientationRoll;
         public float TargetOrientationRoll;
         public float SizeMultiplier;
+        public float TargetSizeMultiplier;
         public bool HasTimedSpeedReturn;
         public float SpeedReturnSeconds;
         public bool HasTimedSizeReturn;

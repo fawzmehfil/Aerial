@@ -24,9 +24,11 @@ namespace Drift
         private BoxCollider hitbox;
         private float defaultForwardSpeed;
         private float currentForwardSpeed;
+        private float activeSpeedTarget;
         private float orientationRoll;
         private float targetOrientationRoll;
         private float sizeMultiplier = 1f;
+        private float activeSizeTarget = 1f;
         private Vector3 baseHitboxSize;
         private Coroutine speedRoutine;
         private Coroutine sizeRoutine;
@@ -49,6 +51,7 @@ namespace Drift
             defaultForwardSpeed = speed;
             forwardSpeed = speed;
             currentForwardSpeed = speed;
+            activeSpeedTarget = speed;
             boundary = playableBoundary;
             visualRoot = droneVisualRoot;
             hitbox = GetComponent<BoxCollider>();
@@ -63,10 +66,13 @@ namespace Drift
 
         public void ResetDrone()
         {
+            StopActivePortalRoutines();
             transform.SetPositionAndRotation(spawnPosition, spawnRotation);
             lateralVelocity = Vector2.zero;
             currentForwardSpeed = defaultForwardSpeed > 0.01f ? defaultForwardSpeed : forwardSpeed;
+            activeSpeedTarget = currentForwardSpeed;
             sizeMultiplier = 1f;
+            activeSizeTarget = 1f;
             orientationRoll = 0f;
             targetOrientationRoll = 0f;
             timedSpeedReturnActive = false;
@@ -81,6 +87,7 @@ namespace Drift
 
         public void ApplySpeedMultiplier(float multiplier, float duration, string hudLabel)
         {
+            activeSpeedTarget = defaultForwardSpeed * multiplier;
             if (speedRoutine != null)
             {
                 StopCoroutine(speedRoutine);
@@ -105,6 +112,7 @@ namespace Drift
 
         public void ApplySize(float multiplier, float duration, string hudLabel)
         {
+            activeSizeTarget = multiplier;
             if (sizeRoutine != null)
             {
                 StopCoroutine(sizeRoutine);
@@ -121,9 +129,11 @@ namespace Drift
                 Position = transform.position,
                 Rotation = transform.rotation,
                 ForwardSpeed = currentForwardSpeed,
+                TargetForwardSpeed = activeSpeedTarget > 0.01f ? activeSpeedTarget : currentForwardSpeed,
                 OrientationRoll = orientationRoll,
                 TargetOrientationRoll = targetOrientationRoll,
                 SizeMultiplier = sizeMultiplier,
+                TargetSizeMultiplier = activeSizeTarget > 0.01f ? activeSizeTarget : sizeMultiplier,
                 HasTimedSpeedReturn = timedSpeedReturnActive,
                 SpeedReturnSeconds = timedSpeedReturnActive ? Mathf.Max(0f, timedSpeedReturnAt - Time.time) : 0f,
                 HasTimedSizeReturn = timedSizeReturnActive,
@@ -133,30 +143,18 @@ namespace Drift
 
         public void RestorePracticeSnapshot(DronePracticeSnapshot snapshot)
         {
-            if (speedRoutine != null)
-            {
-                StopCoroutine(speedRoutine);
-                speedRoutine = null;
-            }
-
-            if (sizeRoutine != null)
-            {
-                StopCoroutine(sizeRoutine);
-                sizeRoutine = null;
-            }
-
-            if (orientationRoutine != null)
-            {
-                StopCoroutine(orientationRoutine);
-                orientationRoutine = null;
-            }
+            StopActivePortalRoutines();
 
             transform.SetPositionAndRotation(snapshot.Position, snapshot.Rotation);
             lateralVelocity = Vector2.zero;
-            currentForwardSpeed = snapshot.ForwardSpeed > 0.01f ? snapshot.ForwardSpeed : defaultForwardSpeed;
-            orientationRoll = snapshot.OrientationRoll;
+            float restoredSpeed = snapshot.ForwardSpeed > 0.01f ? snapshot.ForwardSpeed : defaultForwardSpeed;
+            activeSpeedTarget = snapshot.TargetForwardSpeed > 0.01f ? snapshot.TargetForwardSpeed : restoredSpeed;
+            currentForwardSpeed = snapshot.HasTimedSpeedReturn && snapshot.SpeedReturnSeconds > 0f ? activeSpeedTarget : restoredSpeed;
+            orientationRoll = snapshot.TargetOrientationRoll;
             targetOrientationRoll = snapshot.TargetOrientationRoll;
-            sizeMultiplier = Mathf.Max(0.1f, snapshot.SizeMultiplier);
+            float restoredSize = Mathf.Max(0.1f, snapshot.SizeMultiplier);
+            activeSizeTarget = snapshot.TargetSizeMultiplier > 0.01f ? snapshot.TargetSizeMultiplier : restoredSize;
+            sizeMultiplier = snapshot.HasTimedSizeReturn && snapshot.SizeReturnSeconds > 0f ? activeSizeTarget : restoredSize;
             UpdateHitboxScale();
             if (visualRoot != null)
             {
@@ -280,6 +278,7 @@ namespace Drift
         private IEnumerator SpeedRoutine(float multiplier, float duration)
         {
             float targetSpeed = defaultForwardSpeed * multiplier;
+            activeSpeedTarget = targetSpeed;
             float startSpeed = currentForwardSpeed;
             timedSpeedReturnActive = duration > 0f;
             timedSpeedReturnAt = timedSpeedReturnActive ? Time.time + 0.35f + duration : 0f;
@@ -295,6 +294,7 @@ namespace Drift
                 timedSpeedReturnAt = Time.time + duration;
                 yield return new WaitForSeconds(duration);
                 startSpeed = currentForwardSpeed;
+                activeSpeedTarget = defaultForwardSpeed;
                 for (float t = 0f; t < 0.4f; t += Time.deltaTime)
                 {
                     currentForwardSpeed = Mathf.Lerp(startSpeed, defaultForwardSpeed, t / 0.4f);
@@ -303,6 +303,7 @@ namespace Drift
             }
 
             currentForwardSpeed = defaultForwardSpeed;
+            activeSpeedTarget = defaultForwardSpeed;
             timedSpeedReturnActive = false;
             speedRoutine = null;
         }
@@ -318,6 +319,7 @@ namespace Drift
             }
 
             currentForwardSpeed = defaultForwardSpeed;
+            activeSpeedTarget = defaultForwardSpeed;
             timedSpeedReturnActive = false;
             speedRoutine = null;
         }
@@ -342,6 +344,7 @@ namespace Drift
 
         private IEnumerator SizeRoutine(float multiplier, float duration)
         {
+            activeSizeTarget = multiplier;
             float startSize = sizeMultiplier;
             timedSizeReturnActive = duration > 0f;
             timedSizeReturnAt = timedSizeReturnActive ? Time.time + 0.25f + duration : 0f;
@@ -359,6 +362,7 @@ namespace Drift
                 timedSizeReturnAt = Time.time + duration;
                 yield return new WaitForSeconds(duration);
                 startSize = sizeMultiplier;
+                activeSizeTarget = 1f;
                 for (float t = 0f; t < 0.25f; t += Time.deltaTime)
                 {
                     sizeMultiplier = Mathf.Lerp(startSize, 1f, t / 0.25f);
@@ -368,6 +372,7 @@ namespace Drift
             }
 
             sizeMultiplier = 1f;
+            activeSizeTarget = 1f;
             UpdateHitboxScale();
             timedSizeReturnActive = false;
             sizeRoutine = null;
@@ -385,9 +390,31 @@ namespace Drift
             }
 
             sizeMultiplier = 1f;
+            activeSizeTarget = 1f;
             UpdateHitboxScale();
             timedSizeReturnActive = false;
             sizeRoutine = null;
+        }
+
+        private void StopActivePortalRoutines()
+        {
+            if (speedRoutine != null)
+            {
+                StopCoroutine(speedRoutine);
+                speedRoutine = null;
+            }
+
+            if (sizeRoutine != null)
+            {
+                StopCoroutine(sizeRoutine);
+                sizeRoutine = null;
+            }
+
+            if (orientationRoutine != null)
+            {
+                StopCoroutine(orientationRoutine);
+                orientationRoutine = null;
+            }
         }
 
         private void UpdateHitboxScale()
