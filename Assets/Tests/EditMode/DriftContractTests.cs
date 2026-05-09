@@ -233,6 +233,75 @@ public sealed class DriftContractTests
     }
 
     [Test]
+    public void AcheronRingRouteFitsWasdMovementBudget()
+    {
+        LevelDefinition acheron = LevelCatalog.GetLevels().Single(level => level.LevelNumber == 8);
+        const float droneLateralSpeed = 8.5f;
+        const float maxSustainedInputFraction = 0.72f;
+
+        for (int i = 1; i < acheron.Rings.Length; i++)
+        {
+            RingSpec previous = acheron.Rings[i - 1];
+            RingSpec current = acheron.Rings[i];
+            float zDelta = current.Position.z - previous.Position.z;
+            Assert.That(zDelta, Is.GreaterThan(0f), $"Acheron ring {i} should be forward of the previous ring.");
+
+            float sampleZ = (previous.Position.z + current.Position.z) * 0.5f;
+            float segmentForwardSpeed = EstimateConservativeAcheronForwardSpeed(acheron, sampleZ);
+            float availableSeconds = zDelta / segmentForwardSpeed;
+            float lateralDistance = Vector2.Distance(
+                new Vector2(previous.Position.x, previous.Position.y),
+                new Vector2(current.Position.x, current.Position.y));
+            float requiredLateralSpeed = lateralDistance / availableSeconds;
+
+            Assert.That(
+                requiredLateralSpeed,
+                Is.LessThanOrEqualTo(droneLateralSpeed * maxSustainedInputFraction),
+                $"Acheron ring {i - 1}->{i} requires {requiredLateralSpeed:0.00} lateral units/s over {availableSeconds:0.00}s, which is beyond the WASD budget.");
+        }
+    }
+
+    [Test]
+    public void AcheronMandatoryPortalsStayOnTheRingRoute()
+    {
+        LevelDefinition acheron = LevelCatalog.GetLevels().Single(level => level.LevelNumber == 8);
+
+        foreach (PortalSpec portal in acheron.Portals)
+        {
+            RingSpec[] samePlaneRings = acheron.Rings
+                .Where(ring => Mathf.Abs(ring.Position.z - portal.Position.z) < 0.01f)
+                .ToArray();
+
+            Assert.That(samePlaneRings.Length, Is.EqualTo(1), $"Acheron portal {portal.Kind} at z{portal.Position.z:0} should share a plane with exactly one route ring.");
+
+            Vector2 portalCenter = new Vector2(portal.Position.x, portal.Position.y);
+            Vector2 ringCenter = new Vector2(samePlaneRings[0].Position.x, samePlaneRings[0].Position.y);
+            Assert.That(Vector2.Distance(portalCenter, ringCenter), Is.LessThanOrEqualTo(0.05f), $"Acheron portal {portal.Kind} at z{portal.Position.z:0} should be centered on its route ring.");
+        }
+    }
+
+    [Test]
+    public void AcheronRouteCenterlineAvoidsObstacleHitboxes()
+    {
+        LevelDefinition acheron = LevelCatalog.GetLevels().Single(level => level.LevelNumber == 8);
+        Vector2 droneHalfExtents = new Vector2(0.95f * 0.5f, 0.38f * 0.5f);
+
+        foreach (ObstacleSpec obstacle in acheron.Obstacles)
+        {
+            Vector2 routeCenter = InterpolateRouteAtZ(acheron.Rings, obstacle.Position.z);
+            Vector2 localOffset = Rotate(routeCenter - new Vector2(obstacle.Position.x, obstacle.Position.y), -obstacle.RotationZ);
+            Vector2 obstacleHalfExtents = new Vector2(obstacle.Size.x * 0.5f, obstacle.Size.y * 0.5f);
+            float xClearance = Mathf.Abs(localOffset.x) - obstacleHalfExtents.x - droneHalfExtents.x;
+            float yClearance = Mathf.Abs(localOffset.y) - obstacleHalfExtents.y - droneHalfExtents.y;
+
+            Assert.That(
+                xClearance >= 0f || yClearance >= 0f,
+                Is.True,
+                $"Acheron route centerline is blocked by {obstacle.Kind} at z{obstacle.Position.z:0.0}. Clearances: x {xClearance:0.00}, y {yClearance:0.00}.");
+        }
+    }
+
+    [Test]
     public void AcheronSoundtrackFileExistsAtAuthoredPath()
     {
         LevelDefinition acheron = LevelCatalog.GetLevels().Single(level => level.LevelNumber == 8);
@@ -478,6 +547,55 @@ public sealed class DriftContractTests
         bool hasPortal = level.Portals.Any(portal => portal.Kind == kind && Mathf.Abs(portal.Position.z - targetZ) <= tolerance);
 
         Assert.That(hasPortal, Is.True, $"{level.DisplayName} should place {kind} near {seconds:0.0}s / z{targetZ:0}.");
+    }
+
+    private static float EstimateConservativeAcheronForwardSpeed(LevelDefinition level, float sampleZ)
+    {
+        float speed = level.ForwardSpeed;
+
+        foreach (PortalSpec portal in level.Portals.Where(portal => portal.Kind == PortalKind.SpeedFast))
+        {
+            float activeDistance = level.ForwardSpeed * 1.38f * portal.Duration;
+            if (sampleZ >= portal.Position.z && sampleZ <= portal.Position.z + activeDistance)
+            {
+                speed = Mathf.Max(speed, level.ForwardSpeed * 1.38f);
+            }
+        }
+
+        return speed;
+    }
+
+    private static Vector2 InterpolateRouteAtZ(RingSpec[] rings, float z)
+    {
+        if (z <= rings[0].Position.z)
+        {
+            return new Vector2(rings[0].Position.x, rings[0].Position.y);
+        }
+
+        for (int i = 1; i < rings.Length; i++)
+        {
+            RingSpec previous = rings[i - 1];
+            RingSpec current = rings[i];
+            if (z <= current.Position.z)
+            {
+                float t = Mathf.InverseLerp(previous.Position.z, current.Position.z, z);
+                return Vector2.Lerp(
+                    new Vector2(previous.Position.x, previous.Position.y),
+                    new Vector2(current.Position.x, current.Position.y),
+                    t);
+            }
+        }
+
+        RingSpec finalRing = rings[rings.Length - 1];
+        return new Vector2(finalRing.Position.x, finalRing.Position.y);
+    }
+
+    private static Vector2 Rotate(Vector2 vector, float degrees)
+    {
+        float radians = degrees * Mathf.Deg2Rad;
+        float cos = Mathf.Cos(radians);
+        float sin = Mathf.Sin(radians);
+        return new Vector2(vector.x * cos - vector.y * sin, vector.x * sin + vector.y * cos);
     }
 
     private static T Invoke<T>(object target, string methodName, params object[] args)
