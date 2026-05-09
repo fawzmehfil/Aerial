@@ -276,6 +276,59 @@ public sealed class DriftContractTests
     }
 
     [Test]
+    public void NoClipContractsExistForAlternateLevelPractice()
+    {
+        Type gameManager = RequireType("Drift.GameManager");
+
+        Assert.That(gameManager.GetProperty("IsNoClipMode", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+        Assert.That(gameManager.GetMethod("ToggleNoClipMode", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+        Assert.That(gameManager.GetMethod("DisableNoClipAndRestart", BindingFlags.Public | BindingFlags.Instance), Is.Not.Null);
+    }
+
+    [Test]
+    public void NoClipIgnoresFailuresAndCompletionDoesNotMarkProgressionComplete()
+    {
+        PlayerPrefs.DeleteKey(ProgressionService.HighestUnlockedLevelKey);
+        PlayerPrefs.DeleteKey(ProgressionService.CompletedLevelsKey);
+
+        ClearScene();
+        GameManager manager = GameManager.EnsureRuntime();
+        manager.StartLevel(1);
+        manager.ToggleNoClipMode();
+
+        manager.FailCurrentLevel("Crashed");
+        Assert.That(manager.IsPlaying, Is.True);
+        Assert.That(manager.IsNoClipMode, Is.True);
+
+        manager.CompleteCurrentLevel();
+        Assert.That(manager.Progression.IsLevelCompleted(1), Is.False);
+        ClearScene();
+    }
+
+    [Test]
+    public void TurningNoClipOffRestartsCurrentLevel()
+    {
+        PlayerPrefs.DeleteKey(ProgressionService.HighestUnlockedLevelKey);
+        PlayerPrefs.DeleteKey(ProgressionService.CompletedLevelsKey);
+
+        ClearScene();
+        GameManager manager = GameManager.EnsureRuntime();
+        manager.StartLevel(1);
+        LevelManager levelManager = (LevelManager)GetField(manager, "levelManager");
+        DroneController originalDrone = levelManager.CurrentDrone;
+
+        manager.ToggleNoClipMode();
+        originalDrone.transform.position = new Vector3(0f, 0f, 120f);
+        manager.ToggleNoClipMode();
+
+        Assert.That(manager.IsNoClipMode, Is.False);
+        Assert.That(manager.IsPlaying, Is.True);
+        Assert.That(levelManager.CurrentDrone, Is.Not.SameAs(originalDrone));
+        Assert.That(levelManager.CurrentDrone.transform.position.z, Is.LessThan(1f));
+        ClearScene();
+    }
+
+    [Test]
     public void PracticeSnapshotRestoresActivePortalModesAtEffectTargets()
     {
         ClearScene();

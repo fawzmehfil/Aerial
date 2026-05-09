@@ -13,6 +13,7 @@ namespace Drift
             Pause,
             Complete,
             PracticeComplete,
+            NoClipComplete,
             Failure,
             Settings
         }
@@ -22,6 +23,7 @@ namespace Drift
         private ProgressionService levelSelectProgression;
         private LevelDefinition hudLevel;
         private bool hudPracticeMode;
+        private bool hudNoClipMode;
         private int hudCurrentRing = 1;
         private int hudTotalRings;
         private int practiceCheckpointNumber;
@@ -66,8 +68,14 @@ namespace Drift
 
         public void ShowHud(LevelDefinition level, bool isPracticeMode)
         {
+            ShowHud(level, isPracticeMode, false);
+        }
+
+        public void ShowHud(LevelDefinition level, bool isPracticeMode, bool isNoClipMode)
+        {
             hudLevel = level;
             hudPracticeMode = isPracticeMode;
+            hudNoClipMode = isNoClipMode;
             SetView(View.Hud);
         }
 
@@ -94,6 +102,13 @@ namespace Drift
             completeLevelNumber = levelNumber;
             completeHasNextLevel = false;
             SetView(View.PracticeComplete);
+        }
+
+        public void ShowNoClipComplete(int levelNumber)
+        {
+            completeLevelNumber = levelNumber;
+            completeHasNextLevel = false;
+            SetView(View.NoClipComplete);
         }
 
         public void ShowFailure(string reason)
@@ -141,6 +156,9 @@ namespace Drift
                     break;
                 case View.PracticeComplete:
                     DrawPracticeCompleteMenu();
+                    break;
+                case View.NoClipComplete:
+                    DrawNoClipCompleteMenu();
                     break;
                 case View.Failure:
                     DrawFailure();
@@ -242,9 +260,16 @@ namespace Drift
             {
                 GUI.Label(new Rect(24f, 54f, 420f, 30f), $"Practice Mode  CP {practiceCheckpointNumber}", hudStyle);
             }
-            if (hudLevel != null && hudLevel.IsTutorial)
+
+            if (hudNoClipMode)
             {
                 float y = hudPracticeMode ? 84f : 54f;
+                GUI.Label(new Rect(24f, y, 520f, 30f), "NoClip Mode  Completion disabled", hudStyle);
+            }
+
+            if (hudLevel != null && hudLevel.IsTutorial)
+            {
+                float y = hudPracticeMode && hudNoClipMode ? 114f : hudPracticeMode || hudNoClipMode ? 84f : 54f;
                 GUI.Label(new Rect(24f, y, 680f, 30f), "WASD move  |  Portals change speed, gravity, and size", hudStyle);
             }
 
@@ -253,7 +278,7 @@ namespace Drift
                 GUI.Label(new Rect(Screen.width * 0.5f - 190f, 58f, 380f, 34f), portalEffectLabel, Centered(hudStyle));
             }
 
-            GUI.Label(new Rect(Screen.width * 0.5f - 230f, Screen.height - 44f, 460f, 28f), "WASD Move   R Restart   Esc Pause", Centered(hudStyle));
+            GUI.Label(new Rect(Screen.width * 0.5f - 280f, Screen.height - 44f, 560f, 28f), "WASD Move   N NoClip   R Restart   Esc Pause", Centered(hudStyle));
         }
 
         private void DrawPauseMenu()
@@ -298,6 +323,39 @@ namespace Drift
             if (DrawButton("Practice Again"))
             {
                 GameManager.Instance.StartPracticeLevel(completeLevelNumber);
+            }
+
+            if (DrawButton("Play Normal"))
+            {
+                GameManager.Instance.StartLevel(completeLevelNumber);
+            }
+
+            if (DrawButton("Level Select"))
+            {
+                GameManager.Instance.ShowLevelSelect();
+            }
+
+            if (DrawButton("Main Menu"))
+            {
+                GameManager.Instance.ShowMainMenu();
+            }
+
+            GUILayout.EndArea();
+        }
+
+        private void DrawNoClipCompleteMenu()
+        {
+            Rect panel = CenteredPanel(520f, 390f);
+            DrawPanel(panel);
+            GUILayout.BeginArea(Inset(panel, 28f));
+            GUILayout.Label("NoClip Complete", titleStyle);
+            GUILayout.Label($"Level {completeLevelNumber} learned  |  Completion not saved", subtitleStyle);
+            GUILayout.Space(22f);
+
+            if (DrawButton("Replay NoClip"))
+            {
+                GameManager.Instance.StartLevel(completeLevelNumber);
+                GameManager.Instance.ToggleNoClipMode();
             }
 
             if (DrawButton("Play Normal"))

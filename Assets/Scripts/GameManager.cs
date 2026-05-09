@@ -16,6 +16,7 @@ namespace Drift
         Failed,
         LevelComplete,
         PracticeComplete,
+        NoClipComplete,
         Settings
     }
 
@@ -41,6 +42,7 @@ namespace Drift
         private Coroutine failureRoutine;
         private Coroutine soundtrackRoutine;
         private bool practiceMode;
+        private bool noClipMode;
         private PracticeCheckpoint currentPracticeCheckpoint;
         private int practiceCheckpointCount;
         private float pendingSoundtrackStartTime;
@@ -50,6 +52,7 @@ namespace Drift
         public IReadOnlyList<LevelDefinition> Levels => levels;
         public bool IsPlaying => state == GameState.Playing;
         public bool IsPracticeMode => practiceMode;
+        public bool IsNoClipMode => noClipMode;
         public PracticeCheckpoint CurrentPracticeCheckpoint => currentPracticeCheckpoint;
 
         public static GameManager EnsureRuntime()
@@ -68,6 +71,7 @@ namespace Drift
             state = GameState.MainMenu;
             Time.timeScale = 1f;
             practiceMode = false;
+            noClipMode = false;
             StopLevelSoundtrack();
             levelManager.ClearLevel();
             uiManager.ShowMainMenu();
@@ -78,6 +82,7 @@ namespace Drift
             state = GameState.LevelSelect;
             Time.timeScale = 1f;
             practiceMode = false;
+            noClipMode = false;
             StopLevelSoundtrack();
             levelManager.ClearLevel();
             uiManager.ShowLevelSelect(levels, progression);
@@ -132,10 +137,11 @@ namespace Drift
             state = GameState.Playing;
             Time.timeScale = 1f;
             practiceMode = usePracticeMode;
+            noClipMode = false;
             LevelDefinition level = levels[currentLevelNumber - 1];
             levelManager.LoadLevel(level, ringManager, cameraFollow);
             InitializePracticeCheckpoint();
-            uiManager.ShowHud(level, practiceMode);
+            uiManager.ShowHud(level, practiceMode, noClipMode);
             StartLevelSoundtrack(level);
             UpdateHudProgress();
         }
@@ -153,7 +159,7 @@ namespace Drift
             StopLevelSoundtrack();
             levelManager.ResetCurrentLevel(ringManager, cameraFollow);
             InitializePracticeCheckpoint();
-            uiManager.ShowHud(levels[currentLevelNumber - 1], practiceMode);
+            uiManager.ShowHud(levels[currentLevelNumber - 1], practiceMode, noClipMode);
             StartLevelSoundtrack(levels[currentLevelNumber - 1]);
             UpdateHudProgress();
         }
@@ -181,13 +187,18 @@ namespace Drift
             state = GameState.Playing;
             Time.timeScale = 1f;
             ResumeLevelSoundtrack();
-            uiManager.ShowHud(levels[currentLevelNumber - 1], practiceMode);
+            uiManager.ShowHud(levels[currentLevelNumber - 1], practiceMode, noClipMode);
             UpdateHudProgress();
         }
 
         public void FailCurrentLevel(string reason)
         {
             if (state != GameState.Playing)
+            {
+                return;
+            }
+
+            if (noClipMode)
             {
                 return;
             }
@@ -217,6 +228,14 @@ namespace Drift
                 return;
             }
 
+            if (noClipMode)
+            {
+                state = GameState.NoClipComplete;
+                StopLevelSoundtrack();
+                uiManager.ShowNoClipComplete(currentLevelNumber);
+                return;
+            }
+
             if (practiceMode)
             {
                 state = GameState.PracticeComplete;
@@ -239,6 +258,36 @@ namespace Drift
         public void StartNextLevel()
         {
             StartLevel(Mathf.Min(currentLevelNumber + 1, levels.Count));
+        }
+
+        public void ToggleNoClipMode()
+        {
+            if (state != GameState.Playing)
+            {
+                return;
+            }
+
+            if (noClipMode)
+            {
+                DisableNoClipAndRestart();
+                return;
+            }
+
+            noClipMode = true;
+            uiManager.ShowHud(levels[currentLevelNumber - 1], practiceMode, true);
+            uiManager.ShowPortalEffect("NOCLIP ON", 1.2f);
+            UpdateHudProgress();
+        }
+
+        public void DisableNoClipAndRestart()
+        {
+            if (!noClipMode)
+            {
+                return;
+            }
+
+            noClipMode = false;
+            RestartCurrentLevel();
         }
 
         public void UpdateHudProgress()
@@ -329,6 +378,7 @@ namespace Drift
             state = GameState.Settings;
             Time.timeScale = 1f;
             practiceMode = false;
+            noClipMode = false;
             StopLevelSoundtrack();
             levelManager.ClearLevel();
             uiManager.ShowSettings();
@@ -393,6 +443,11 @@ namespace Drift
             if (Input.GetKeyDown(KeyCode.R) && (state == GameState.Playing || state == GameState.Failed || state == GameState.Paused))
             {
                 RestartCurrentLevel();
+            }
+
+            if (Input.GetKeyDown(KeyCode.N) && state == GameState.Playing)
+            {
+                ToggleNoClipMode();
             }
 
             if (Input.GetKeyDown(KeyCode.Escape))
@@ -610,7 +665,7 @@ namespace Drift
             ringManager.SetCurrentRingIndex(currentPracticeCheckpoint.NextRingIndex);
             ResetPortalsForPracticeRespawn(currentPracticeCheckpoint.Position.z);
             SyncPracticeSoundtrack(currentPracticeCheckpoint.SoundtrackTime);
-            uiManager.ShowHud(levels[currentLevelNumber - 1], true);
+            uiManager.ShowHud(levels[currentLevelNumber - 1], true, noClipMode);
             uiManager.UpdatePracticeCheckpoint(currentPracticeCheckpoint.CheckpointNumber);
             UpdateHudProgress();
         }
